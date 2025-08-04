@@ -1,0 +1,56 @@
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Excel temporary files
+~$*.xlsx
+~$*.xls
+
+# Virtual environment
+venv/
+env/
+.env
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Google Service Account Credentials (NEVER COMMIT THESE!)
+*.json
+*service-account*.json
+*credentials*.json
+service_account.json
+google_credentials.json
+
+# Streamlit secrets (local development only)
+.streamlit/secrets.toml
+
+# Local data files (will be replaced by Google Sheets)
+Projects.xlsx
+Tasks.xlsx
+Credentials.csv
+
+# Keep logos directory - these are needed for branding
+# logos/ - commented out to keep logos
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
