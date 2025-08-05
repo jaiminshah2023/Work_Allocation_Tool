@@ -261,6 +261,56 @@ def show_dashboard():
                 st.plotly_chart(fig_assignee, use_container_width=True)
             else:
                 st.info("No task assignment data available.")
+        # --- Daily basis tasks chart ---
+        st.markdown("---")
+        st.subheader("📅 Daily Basis Tasks")
+        if not df_filtered.empty and 'start_date' in df_filtered.columns:
+            df_daily = df_filtered.copy()
+            df_daily['start_date'] = pd.to_datetime(df_daily['start_date'], errors='coerce')
+            daily_counts = df_daily.groupby(df_daily['start_date'].dt.date).size().reset_index(name='Tasks')
+            fig_daily = px.bar(
+                daily_counts,
+                x='start_date',
+                y='Tasks',
+                title="Tasks Created Per Day",
+                text='Tasks',
+                color='Tasks',
+                color_continuous_scale='Blues'
+            )
+            fig_daily.update_traces(texttemplate='%{text}', textposition='outside')
+            fig_daily.update_layout(height=400, xaxis_title="Date", yaxis_title="Number of Tasks", showlegend=False)
+            st.plotly_chart(fig_daily, use_container_width=True)
+        else:
+            st.info("No start date data available for daily tasks chart.")
+
+        # --- Days taken to complete each task chart ---
+        st.markdown("---")
+        st.subheader("⏳ Days Taken to Complete Each Task")
+        if not df_filtered.empty and 'start_date' in df_filtered.columns and 'completion_date' in df_filtered.columns:
+            df_days = df_filtered.copy()
+            df_days['start_date'] = pd.to_datetime(df_days['start_date'], errors='coerce')
+            df_days['completion_date'] = pd.to_datetime(df_days['completion_date'], errors='coerce')
+            # Only consider tasks that are completed and have valid dates
+            completed_mask = (df_days['status'] == 'Completed') & df_days['start_date'].notna() & df_days['completion_date'].notna()
+            df_days_completed = df_days[completed_mask].copy()
+            df_days_completed['days_taken'] = (df_days_completed['completion_date'] - df_days_completed['start_date']).dt.days
+            if not df_days_completed.empty:
+                fig_days = px.bar(
+                    df_days_completed,
+                    x='task_name',
+                    y='days_taken',
+                    title="Days Taken to Complete Each Task",
+                    text='days_taken',
+                    color='days_taken',
+                    color_continuous_scale='Viridis'
+                )
+                fig_days.update_traces(texttemplate='%{text}', textposition='outside')
+                fig_days.update_layout(height=400, xaxis_title="Task Name", yaxis_title="Days Taken", showlegend=False)
+                st.plotly_chart(fig_days, use_container_width=True)
+            else:
+                st.info("No completed tasks with valid dates for days taken chart.")
+        else:
+            st.info("Insufficient data for days taken to complete each task chart.")
     
     else:
         st.info("No tasks match the current filters. Please adjust your filter selections.")
