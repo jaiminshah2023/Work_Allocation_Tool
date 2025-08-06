@@ -743,22 +743,63 @@ def save_task_to_sheets(task_dict):
 
 # === Update Task in Google Sheets ===
 def update_task_in_sheets(task_name, updated_task_dict):
-    """Update a specific task in Google Sheets."""
+    """Update a specific task in Google Sheets using flexible column mapping."""
     try:
         client = init_google_sheets()
         if client is None:
             return False
         
+        # Apply rate limiting
+        rate_limit_api_call()
+        
         sheet_ids = get_sheet_ids()
         sheet = client.open_by_key(sheet_ids['tasks']).sheet1
         
-        # Get existing data to find the task
+        # Get headers and existing data
+        headers_row = sheet.row_values(1)
         existing_data = sheet.get_all_records()
+        
+        # Debug: Show current headers
+        st.info(f"📋 Current sheet headers: {headers_row}")
+        
+        # Create flexible column mapping like in save_task_to_sheets
+        header_variations = {
+            "task_name": ["task_name", "Task Name", "Task", "task", "name"],
+            "description": ["description", "Description", "desc", "Desc"],
+            "project_name": ["project_name", "Project Name", "Project", "project"],
+            "assigned_to": ["assigned_to", "Assigned To", "Assignee", "assignee", "assigned"],
+            "priority": ["priority", "Priority", "pri"],
+            "status": ["status", "Status", "stat"],
+            "start_date": ["start_date", "Start Date", "start", "Start"],
+            "due_date": ["due_date", "Due Date", "due", "Due"],
+            "completion_date": ["completion_date", "Completion Date", "completed", "Completed"],
+            "comments": ["comments", "Comments", "comment", "Comment", "notes", "Notes"],
+            "created_by": ["created_by", "Created By", "creator", "Creator"]
+        }
+        
+        # Create column mapping based on actual headers
+        column_mapping = {}
+        for i, header in enumerate(headers_row):
+            header_lower = header.lower().strip()
+            for expected_field, variations in header_variations.items():
+                if header in variations or header_lower in [v.lower() for v in variations]:
+                    column_mapping[expected_field] = i
+                    break
+        
+        # Debug: Show column mapping
+        st.info(f"🗂️ Column mapping: {column_mapping}")
         
         # Find the task row
         task_row = None
         for i, record in enumerate(existing_data):
-            if record.get('task_name') == task_name:
+            # Try different possible field names for task identification
+            task_name_field = None
+            for possible_field in ['task_name', 'Task Name', 'Task', 'task', 'name']:
+                if possible_field in record:
+                    task_name_field = possible_field
+                    break
+            
+            if task_name_field and record.get(task_name_field) == task_name:
                 task_row = i + 2  # +2 because sheets are 1-indexed and there's a header row
                 break
         
@@ -766,31 +807,41 @@ def update_task_in_sheets(task_name, updated_task_dict):
             st.error(f"Task '{task_name}' not found for update")
             return False
         
-        # Prepare updated task data
-        task_row_data = [
-            updated_task_dict.get("task_name", ""),
-            updated_task_dict.get("description", ""),
-            updated_task_dict.get("project_name", ""),
-            updated_task_dict.get("assigned_to", ""),
-            updated_task_dict.get("priority", ""),
-            updated_task_dict.get("status", ""),
-            updated_task_dict.get("start_date", ""),
-            updated_task_dict.get("due_date", ""),
-            updated_task_dict.get("completion_date", ""),
-            updated_task_dict.get("comments", ""),
-            updated_task_dict.get("created_by", "")
-        ]
+        # Map our data to the correct columns
+        field_mappings = {
+            "task_name": updated_task_dict.get("task_name", ""),
+            "description": updated_task_dict.get("description", ""),
+            "project_name": updated_task_dict.get("project_name", ""),
+            "assigned_to": updated_task_dict.get("assigned_to", ""),
+            "priority": updated_task_dict.get("priority", ""),
+            "status": updated_task_dict.get("status", ""),
+            "start_date": updated_task_dict.get("start_date", ""),
+            "due_date": updated_task_dict.get("due_date", ""),
+            "completion_date": updated_task_dict.get("completion_date", ""),
+            "comments": updated_task_dict.get("comments", ""),
+            "created_by": updated_task_dict.get("created_by", "")
+        }
         
         # Convert dates to strings if they're datetime objects
-        for i, value in enumerate(task_row_data):
+        for field, value in field_mappings.items():
             if hasattr(value, 'strftime'):
-                task_row_data[i] = value.strftime('%Y-%m-%d')
+                field_mappings[field] = value.strftime('%Y-%m-%d')
             elif value is None or str(value).lower() == 'nat':
-                task_row_data[i] = ""
+                field_mappings[field] = ""
         
-        # Update the row
-        for col, value in enumerate(task_row_data, start=1):
-            sheet.update_cell(task_row, col, value)
+        # Update only the mapped columns
+        updated_count = 0
+        for field, value in field_mappings.items():
+            if field in column_mapping:
+                col_index = column_mapping[field] + 1  # +1 for 1-indexed columns
+                sheet.update_cell(task_row, col_index, value)
+                updated_count += 1
+        
+        # Debug: Show what we updated
+        st.info(f"💾 Updated {updated_count} fields for task '{task_name}'")
+        missing_fields = [field for field in field_mappings.keys() if field not in column_mapping]
+        if missing_fields:
+            st.warning(f"⚠️ Could not update fields (columns not found): {missing_fields}")
         
         # Invalidate tasks cache since we've modified the data
         invalidate_cache('tasks')

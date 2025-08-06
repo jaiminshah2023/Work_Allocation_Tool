@@ -199,7 +199,126 @@ def handle_tasks(user_email):
     user_email = user_email.strip().lower()
     page = st.session_state.get("task_page", "Tasks")
 
-    tab_dashboard, tab_all, tab_my = st.tabs(["Dashboard", " All Tasks", "👤 My Tasks"])
+    tab_today, tab_dashboard, tab_all, tab_my = st.tabs(["📅 Today's Tasks", "📊 Dashboard", "📋 All Tasks", "👤 My Tasks"])
+
+    with tab_today:
+        st.subheader("📅 Today's Tasks")
+        
+        # Show logged in user info
+        user_name = get_user_name(user_email)
+        st.info(f"👤 **Logged in as:** {user_name}")
+        
+        # Get today's date
+        today = date.today()
+        st.markdown(f"### Tasks scheduled for today: **{today.strftime('%B %d, %Y')}**")
+        
+        # Filter tasks for today and for the current user
+        today_tasks = df[
+            (df['assigned_to'] == user_email) & 
+            (pd.to_datetime(df['start_date'], errors='coerce').dt.date == today)
+        ].copy()
+        
+        if today_tasks.empty:
+            st.info("🎉 No tasks scheduled for today! You're all caught up.")
+            st.markdown("### 💡 What you can do:")
+            st.markdown("- Check your **upcoming tasks** in the 'My Tasks' tab")
+            st.markdown("- Review **overdue tasks** that need attention")
+            st.markdown("- Plan ahead for tomorrow's schedule")
+        else:
+            # Show summary statistics for today
+            total_today = len(today_tasks)
+            completed_today = len(today_tasks[today_tasks['status'] == 'Completed'])
+            in_progress_today = len(today_tasks[today_tasks['status'] == 'In Progress'])
+            not_started_today = len(today_tasks[today_tasks['status'] == 'Not Started'])
+            
+            # Display metrics
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("📋 Total Tasks Today", total_today)
+            with col2:
+                st.metric("✅ Completed", completed_today)
+            with col3:
+                st.metric("🔄 In Progress", in_progress_today)
+            with col4:
+                st.metric("🆕 Not Started", not_started_today)
+            
+            st.markdown("---")
+            
+            # Group tasks by priority for better organization
+            high_priority = today_tasks[today_tasks['priority'] == 'High']
+            medium_priority = today_tasks[today_tasks['priority'] == 'Medium']
+            low_priority = today_tasks[today_tasks['priority'] == 'Low']
+            
+            # Display high priority tasks first
+            if not high_priority.empty:
+                st.markdown("### 🔴 High Priority Tasks")
+                for idx, row in high_priority.iterrows():
+                    status_emoji = "✅" if row['status'] == 'Completed' else "🔄" if row['status'] == 'In Progress' else "🆕"
+                    
+                    with st.expander(f"{status_emoji} {row['task_name']}", expanded=row['status'] != 'Completed'):
+                        col1, col2 = st.columns([3, 1])
+                        with col1:
+                            st.write(f"**Project:** {row['project_name']}")
+                            st.write(f"**Description:** {row.get('description', 'No description')}")
+                            st.write(f"**Due Date:** {pd.to_datetime(row['due_date']).strftime('%Y-%m-%d') if pd.notna(row['due_date']) else 'Not set'}")
+                            st.write(f"**Status:** {row['status']}")
+                            if row.get('comments'):
+                                st.write(f"**Comments:** {row['comments']}")
+                        with col2:
+                            if st.button("Edit", key=f"edit_today_high_{idx}"):
+                                st.session_state.edit_task_idx = idx
+                                st.session_state.show_edit_dialog = True
+                                st.session_state.active_tab = "today"
+            
+            # Display medium priority tasks
+            if not medium_priority.empty:
+                st.markdown("### 🟡 Medium Priority Tasks")
+                for idx, row in medium_priority.iterrows():
+                    status_emoji = "✅" if row['status'] == 'Completed' else "🔄" if row['status'] == 'In Progress' else "🆕"
+                    
+                    with st.expander(f"{status_emoji} {row['task_name']}", expanded=False):
+                        col1, col2 = st.columns([3, 1])
+                        with col1:
+                            st.write(f"**Project:** {row['project_name']}")
+                            st.write(f"**Description:** {row.get('description', 'No description')}")
+                            st.write(f"**Due Date:** {pd.to_datetime(row['due_date']).strftime('%Y-%m-%d') if pd.notna(row['due_date']) else 'Not set'}")
+                            st.write(f"**Status:** {row['status']}")
+                            if row.get('comments'):
+                                st.write(f"**Comments:** {row['comments']}")
+                        with col2:
+                            if st.button("Edit", key=f"edit_today_medium_{idx}"):
+                                st.session_state.edit_task_idx = idx
+                                st.session_state.show_edit_dialog = True
+                                st.session_state.active_tab = "today"
+            
+            # Display low priority tasks
+            if not low_priority.empty:
+                st.markdown("### 🟢 Low Priority Tasks")
+                for idx, row in low_priority.iterrows():
+                    status_emoji = "✅" if row['status'] == 'Completed' else "🔄" if row['status'] == 'In Progress' else "🆕"
+                    
+                    with st.expander(f"{status_emoji} {row['task_name']}", expanded=False):
+                        col1, col2 = st.columns([3, 1])
+                        with col1:
+                            st.write(f"**Project:** {row['project_name']}")
+                            st.write(f"**Description:** {row.get('description', 'No description')}")
+                            st.write(f"**Due Date:** {pd.to_datetime(row['due_date']).strftime('%Y-%m-%d') if pd.notna(row['due_date']) else 'Not set'}")
+                            st.write(f"**Status:** {row['status']}")
+                            if row.get('comments'):
+                                st.write(f"**Comments:** {row['comments']}")
+                        with col2:
+                            if st.button("Edit", key=f"edit_today_low_{idx}"):
+                                st.session_state.edit_task_idx = idx
+                                st.session_state.show_edit_dialog = True
+                                st.session_state.active_tab = "today"
+            
+            # Progress bar for today's completion
+            if total_today > 0:
+                completion_percentage = (completed_today / total_today) * 100
+                st.markdown("---")
+                st.markdown("### 📊 Today's Progress")
+                st.progress(completion_percentage / 100)
+                st.write(f"**{completion_percentage:.1f}%** of today's tasks completed ({completed_today}/{total_today})")
 
     with tab_dashboard:
         st.subheader("📊 Task Dashboard")
@@ -572,30 +691,69 @@ def handle_tasks(user_email):
                     if st.button("Edit", key=f"edit_my_task_{idx}"):
                         st.session_state.edit_task_idx = idx
                         st.session_state.show_edit_dialog = True
+                        st.session_state.active_tab = "my"
 
-            # Edit dialog logic
-            if st.session_state.get("show_edit_dialog") and st.session_state.get("edit_task_idx") is not None:
-                edit_idx = st.session_state.edit_task_idx
-                edit_row = my_tasks.loc[edit_idx]
+    with st.sidebar:
+        st.subheader("🗂 Tasks")
+        
+        # Show user info in sidebar
+        user_name = get_user_name(user_email)
+        st.markdown(f"**👤 {user_name}**")
+        st.caption(f"📧 {user_email}")
+        st.markdown("---")
+        
+        # Only show tasks assigned to the logged-in user in sidebar
+        for task_name in df[df['assigned_to'] == user_email]['task_name'].unique():
+            if st.button(task_name, key=f"task_sidebar_{task_name}"):
+                st.session_state.selected_task = task_name
+                st.session_state.task_page = "TaskDetail"
+                st.rerun()
+
+    # Shared Edit dialog logic for both Today's Tasks and My Tasks
+    if st.session_state.get("show_edit_dialog") and st.session_state.get("edit_task_idx") is not None:
+        # Determine which dataset to use based on active tab
+        active_tab = st.session_state.get("active_tab", "my")
+        if active_tab == "today":
+            # Get today's tasks for the user
+            today = date.today()
+            today_tasks = df[
+                (df['assigned_to'] == user_email) & 
+                (pd.to_datetime(df['start_date'], errors='coerce').dt.date == today)
+            ].copy()
+            edit_tasks_df = today_tasks
+        else:
+            # Default to my tasks
+            edit_tasks_df = df[df['assigned_to'] == user_email]
+            
+        if not edit_tasks_df.empty:
+            edit_idx = st.session_state.edit_task_idx
+            # Find the task in the edit_tasks_df by index
+            if edit_idx in edit_tasks_df.index:
+                edit_row = edit_tasks_df.loc[edit_idx]
                 st.markdown("---")
                 st.markdown("#### Edit Task")
                 with st.form(key=f"edit_task_form_{edit_idx}", clear_on_submit=False):
                     new_task_name = st.text_input("Task Name", value=edit_row.get("task_name", ""))
                     new_description = st.text_area("Description", value=edit_row.get("description", ""))
-                    new_project = st.selectbox("Project", load_projects(), index=load_projects().index(edit_row.get("project_name", "")) if edit_row.get("project_name", "") in load_projects() else 0)
-                    new_priority = st.selectbox("Priority", ["Low", "Medium", "High"], index=["Low", "Medium", "High"].index(edit_row.get("priority", "Medium")))
-                    new_status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"], index=["Not Started", "In Progress", "Completed"].index(edit_row.get("status", "Not Started")))
-                    new_start_date = st.date_input("Start Date", value=pd.to_datetime(edit_row.get("start_date", date.today())).date() if pd.notna(edit_row.get("start_date")) else date.today())
-                    new_start_date = pd.to_datetime(new_start_date).date()
                     new_due_date = st.date_input("Due Date", value=pd.to_datetime(edit_row.get("due_date", date.today())).date() if pd.notna(edit_row.get("due_date")) else date.today())
                     new_due_date = pd.to_datetime(new_due_date).date()
+                    new_priority = st.selectbox("Priority", ["Low", "Medium", "High"], index=["Low", "Medium", "High"].index(edit_row.get("priority", "Medium")))
+                    new_status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"], index=["Not Started", "In Progress", "Completed"].index(edit_row.get("status", "Not Started")))
+                    new_project = st.selectbox("Project", load_projects(), index=load_projects().index(edit_row.get("project_name", "")) if edit_row.get("project_name", "") in load_projects() else 0)
+                    # Note: assigned_to and created_by are kept as original, not editable
+                    new_start_date = st.date_input("Start Date", value=pd.to_datetime(edit_row.get("start_date", date.today())).date() if pd.notna(edit_row.get("start_date")) else date.today())
+                    new_start_date = pd.to_datetime(new_start_date).date()
+                    
+                    # Completion Date - only show if status is Completed
                     show_completion = new_status == "Completed"
                     if show_completion:
                         new_completion_date = st.date_input("Completion Date", value=pd.to_datetime(edit_row.get("completion_date", date.today())).date() if pd.notna(edit_row.get("completion_date")) else date.today())
                         new_completion_date = pd.to_datetime(new_completion_date).date()
                     else:
                         new_completion_date = None
+                    
                     new_comments = st.text_area("Comments", value=edit_row.get("comments", ""))
+                    
                     submitted = st.form_submit_button("Save Changes")
                     cancel = st.form_submit_button("Cancel")
                     if submitted:
@@ -619,26 +777,16 @@ def handle_tasks(user_email):
                             st.success(f"Task '{new_task_name}' updated successfully!")
                             st.session_state.show_edit_dialog = False
                             st.session_state.edit_task_idx = None
+                            st.session_state.active_tab = None
                             st.rerun()
                         else:
                             st.error("Failed to update task. Please try again.")
                     if cancel:
                         st.session_state.show_edit_dialog = False
                         st.session_state.edit_task_idx = None
+                        st.session_state.active_tab = None
                         st.rerun()
-
-    with st.sidebar:
-        st.subheader("🗂 Tasks")
-        
-        # Show user info in sidebar
-        user_name = get_user_name(user_email)
-        st.markdown(f"**👤 {user_name}**")
-        st.caption(f"📧 {user_email}")
-        st.markdown("---")
-        
-        # Only show tasks assigned to the logged-in user in sidebar
-        for task_name in df[df['assigned_to'] == user_email]['task_name'].unique():
-            if st.button(task_name, key=f"task_sidebar_{task_name}"):
-                st.session_state.selected_task = task_name
-                st.session_state.task_page = "TaskDetail"
-                st.rerun()
+            else:
+                st.error("Task not found for editing.")
+                st.session_state.show_edit_dialog = False
+                st.session_state.edit_task_idx = None
