@@ -84,18 +84,19 @@ def handle_tasks(user_email):
     df["assigned_to"] = df["assigned_to"].astype(str).str.strip().str.lower()
     user_email = user_email.strip().lower()
 
+    # Remove Create New Task button at the top
+
     if page == "NewTask":
-        if user_email != "digital@childhelpfoundationindia.org":
+        authorized_users = load_users()
+        if user_email not in authorized_users:
             st.warning("Only authorized users can create tasks.")
             if st.button("🔙 Back"):
                 st.session_state.task_page = "Tasks"
                 st.rerun()
             return
-
         st.header("🆕 Create New Task")
         task_name = st.text_input("Task Name")
         description = st.text_area("Description")
-        
         # Get projects list
         projects_list = load_projects()
         if not projects_list:
@@ -104,19 +105,15 @@ def handle_tasks(user_email):
                 st.session_state.task_page = "Tasks"
                 st.rerun()
             return
-            
         project_name = st.selectbox("Project", projects_list)
-        
         # Get users list
         users_list = load_users()
         if not users_list:
             st.error("No users available. Please check your user configuration.")
             return
-            
         assigned_to = st.selectbox("Assign To", users_list)
         if assigned_to:
             assigned_to = assigned_to.strip().lower()
-            
         priority = st.selectbox("Priority", ["Low", "Medium", "High"])
         status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"])
         start = st.date_input("Start Date", date.today())
@@ -141,7 +138,6 @@ def handle_tasks(user_email):
                 if not assigned_to:
                     st.error("Please select a user to assign the task to.")
                     return
-                
                 # Prepare task data
                 task_data = {
                     "task_name": task_name,
@@ -156,7 +152,6 @@ def handle_tasks(user_email):
                     "comments": comments,
                     "created_by": user_email
                 }
-                
                 # Save task with error handling
                 try:
                     if save_task(task_data):
@@ -167,7 +162,6 @@ def handle_tasks(user_email):
                         st.error("Failed to save task. Please try again.")
                 except Exception as e:
                     st.error(f"Error saving task: {str(e)}")
-                    
         with col2:
             if st.button("🔙 Back", key="back_task"):
                 st.session_state.task_page = "Tasks"
@@ -601,13 +595,14 @@ def handle_tasks(user_email):
         if selected_assignee:
             filtered_df = filtered_df[filtered_df['assigned_to'].isin(selected_assignee)]
 
-        # Show Create New Task button below filters
-        if user_email == "digital@childhelpfoundationindia.org":
+        # Show Create New Task button below filters for authorized users
+        authorized_users = load_users()
+        if user_email in authorized_users:
             if st.button("+ Create New Task", key="create_new_task_btn"):
-                st.session_state.show_create_task_warning = True
+                st.session_state.task_page = "NewTask"
+                st.rerun()
         else:
-            if st.button("+ Create New Task", key="unauthorized_create_task_btn"):
-                pass
+            st.button("+ Create New Task", key="unauthorized_create_task_btn", disabled=True)
 
         # Show filtered table data
         if filtered_df.empty:

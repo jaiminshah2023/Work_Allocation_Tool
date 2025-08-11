@@ -66,15 +66,19 @@ def show_data_status():
 def login_form():
     st.title("🔐 Login")
     email = st.text_input("Enter your email")
+    password = st.text_input("Enter password", type="password")
 
     if st.button("Login"):
         if USE_GOOGLE_SHEETS:
-            # Check credentials using Google Sheets
+            # Check credentials using Google Sheets and password
             if check_user_credentials(email) and validate_email(email):
-                st.session_state["is_logged_in"] = True
-                st.session_state["user_email"] = email.strip()
-                st.success("Login successful!")
-                st.rerun()
+                if password == "Child#1234":
+                    st.session_state["is_logged_in"] = True
+                    st.session_state["user_email"] = email.strip()
+                    st.success("Login successful!")
+                    st.rerun()
+                else:
+                    st.error("Incorrect password.")
             else:
                 st.error("Invalid email or user not found in system.")
         else:

@@ -82,9 +82,10 @@ def handle_projects(user_email):
 
     projects_df = load_projects()
 
+    authorized_users = load_users()
     col1, col2 = st.columns([1, 4])
     with col1:
-        if user_email == "digital@childhelpfoundationindia.org":
+        if user_email in authorized_users:
             if st.button("➕ Create New Project", key="create_project_btn"):
                 st.session_state.show_create_warning = True
         else:
@@ -104,7 +105,7 @@ def handle_projects(user_email):
                 st.session_state.show_create_warning = False
                 st.rerun()
 
-    if st.session_state.get("show_create_form") and user_email == "digital@childhelpfoundationindia.org":
+    if st.session_state.get("show_create_form") and user_email in authorized_users:
         st.header("🆕 Create New Project")
         project_name = st.text_input("Project Name")
         description = st.text_area("Description")
@@ -112,8 +113,7 @@ def handle_projects(user_email):
         start_date = pd.to_datetime(start_date).date()
         status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"])
         priority = st.selectbox("Priority", ["Low", "Medium", "High"])
-        authorized_users = ["digital@childhelpfoundationindia.org"]
-        created_by = st.selectbox("Created By", authorized_users, index=authorized_users.index(user_email) if user_email in authorized_users else 0)
+        created_by = user_email
 
         # End Date only enabled if status is Completed
         if status == "Completed":
@@ -181,19 +181,18 @@ def handle_projects(user_email):
         st.markdown(f"**Priority:** {project['priority']}")
         col1, col2 = st.columns([1, 1])
         with col1:
-            if user_email == "digital@childhelpfoundationindia.org":
-                if st.button("✏️ Edit Project", key="edit_project_detail"):
-                    st.session_state.edit_project_idx = idx
-                    st.session_state.show_edit_form = True
-                    st.session_state.show_project_detail = False
-                    st.rerun()
+            if st.button("✏️ Edit Project", key="edit_project_detail"):
+                st.session_state.edit_project_idx = idx
+                st.session_state.show_edit_form = True
+                st.session_state.show_project_detail = False
+                st.rerun()
         with col2:
             if st.button("🔙 Back", key="back_project_detail"):
                 st.session_state.show_project_detail = False
                 st.rerun()
 
-    # Edit form for authorized user
-    if st.session_state.get("show_edit_form") and user_email == "digital@childhelpfoundationindia.org":
+    # Edit form for any user
+    if st.session_state.get("show_edit_form"):
         idx = st.session_state.get("edit_project_idx")
         project = projects_df.iloc[idx]
         st.header(f"✏️ Edit Project: {project['project_name']}")
@@ -227,7 +226,6 @@ def handle_projects(user_email):
                             return
                     except Exception as e:
                         st.warning(f"Could not check tasks for project completion: {e}")
-                
                 # Update project using efficient update function
                 updated_project = {
                     "project_name": project_name,
@@ -238,7 +236,6 @@ def handle_projects(user_email):
                     "priority": priority,
                     "created_by": project['created_by']  # Keep original creator
                 }
-                
                 if update_project_in_sheets(project['project_name'], updated_project):
                     st.success("Project updated successfully!")
                     st.session_state.show_edit_form = False
