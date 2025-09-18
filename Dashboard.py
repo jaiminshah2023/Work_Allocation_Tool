@@ -42,22 +42,6 @@ def show_dashboard():
     # Header with logos for Dashboard
     dashboard_header_col1, dashboard_header_col2, dashboard_header_col3 = st.columns([1, 3, 1])
     
-    with dashboard_header_col1:
-        if os.path.exists("logos/childlogo.jpg"):
-            st.image("logos/childlogo.jpg", width=100)
-        else:
-            st.empty()
-    
-    with dashboard_header_col2:
-        st.markdown("<h1 style='text-align: center; margin-top: 20px;'>📊 Dashboard</h1>", unsafe_allow_html=True)
-    
-    with dashboard_header_col3:
-        if os.path.exists("logos/tigerlogo.jpg"):
-            st.image("logos/tigerlogo.jpg", width=100)
-        else:
-            st.empty()
-    
-    st.markdown("---")  # Add separator line
     
     # Load data
     df = load_tasks()
