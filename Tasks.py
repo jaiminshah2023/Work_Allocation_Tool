@@ -332,28 +332,28 @@ def handle_tasks(user_email):
             filter_project = st.multiselect(
                 "Filter by Project",
                 options=df['project_name'].unique().tolist() if not df.empty else [],
-                default=df['project_name'].unique().tolist() if not df.empty else []
+                # default=df['project_name'].unique().tolist() if not df.empty else []
             )
         
         with filter_col2:
             filter_status = st.multiselect(
                 "Filter by Status", 
                 options=df['status'].unique().tolist() if not df.empty else [],
-                default=df['status'].unique().tolist() if not df.empty else []
+                # default=df['status'].unique().tolist() if not df.empty else []
             )
         
         with filter_col3:
             filter_priority = st.multiselect(
                 "Filter by Priority", 
                 options=df['priority'].unique().tolist() if not df.empty and 'priority' in df.columns else [],
-                default=df['priority'].unique().tolist() if not df.empty and 'priority' in df.columns else []
+                # default=df['priority'].unique().tolist() if not df.empty and 'priority' in df.columns else []
             )
         
         with filter_col4:
             filter_assignee = st.multiselect(
                 "Filter by Assignee",
                 options=df['assigned_to'].unique().tolist() if not df.empty else [],
-                default=df['assigned_to'].unique().tolist() if not df.empty else []
+                # default=df['assigned_to'].unique().tolist() if not df.empty else []
             )
         
         # Apply filters
@@ -559,28 +559,28 @@ def handle_tasks(user_email):
             selected_project = st.multiselect(
                 "Filter by Project",
                 options=sorted(df['project_name'].dropna().unique().tolist()),
-                default=sorted(df['project_name'].dropna().unique().tolist()),
+                # default=sorted(df['project_name'].dropna().unique().tolist()),
                 key="all_tasks_project_filter"
             )
         with filter_col2:
             selected_status = st.multiselect(
                 "Filter by Status",
                 options=sorted(df['status'].dropna().unique().tolist()),
-                default=sorted(df['status'].dropna().unique().tolist()),
+                # default=sorted(df['status'].dropna().unique().tolist()),
                 key="all_tasks_status_filter"
             )
         with filter_col3:
             selected_priority = st.multiselect(
                 "Filter by Priority",
                 options=sorted(df['priority'].dropna().unique().tolist()) if 'priority' in df.columns else [],
-                default=sorted(df['priority'].dropna().unique().tolist()) if 'priority' in df.columns else [],
+                # default=sorted(df['priority'].dropna().unique().tolist()) if 'priority' in df.columns else [],
                 key="all_tasks_priority_filter"
             )
         with filter_col4:
             selected_assignee = st.multiselect(
                 "Filter by Assignee",
                 options=sorted(df['assigned_to'].dropna().unique().tolist()),
-                default=sorted(df['assigned_to'].dropna().unique().tolist()),
+                # default=sorted(df['assigned_to'].dropna().unique().tolist()),
                 key="all_tasks_assignee_filter"
             )
 
