@@ -82,30 +82,24 @@ def handle_projects(user_email):
 
     projects_df = load_projects()
 
-    authorized_users = load_users()
+    admin_emails = [
+        "digital@childhelpfoundationindia.org",
+        "rajendra.pathak@childhelpfoundationindia.org",
+        "jiji.john@childhelpfoundationindia.org",
+        "webteam@childhelpfoundationindia.org"
+    ]
     col1, col2 = st.columns([1, 4])
     with col1:
-        if user_email in authorized_users:
+        if user_email in admin_emails:
             if st.button("➕ Create New Project", key="create_project_btn"):
-                st.session_state.show_create_warning = True
+                st.session_state.show_create_form = True
         else:
             if st.button("➕ Create New Project", key="unauthorized_create_project_btn"):
                 st.warning("Only authorized users can create projects.")
 
-    if st.session_state.get("show_create_warning"):
-        st.warning("Are you sure you want to create a new project?")
-        confirm_col, cancel_col = st.columns(2)
-        with confirm_col:
-            if st.button("✅ Yes, proceed", key="confirm_create"):
-                st.session_state.show_create_form = True
-                st.session_state.show_create_warning = False
-                st.rerun()
-        with cancel_col:
-            if st.button("❌ Cancel", key="cancel_create"):
-                st.session_state.show_create_warning = False
-                st.rerun()
+    # Removed warning confirmation step for creating new project
 
-    if st.session_state.get("show_create_form") and user_email in authorized_users:
+    if st.session_state.get("show_create_form") and (user_email in admin_emails):
         st.header("🆕 Create New Project")
         project_name = st.text_input("Project Name")
         description = st.text_area("Description")
@@ -163,7 +157,8 @@ def handle_projects(user_email):
     with st.sidebar:
         st.subheader("🗂 Projects")
         for idx, row in projects_df.iterrows():
-            if st.button(row['project_name'], key=f"sidebar_proj_{row['project_name']}"):
+            # Ensure unique key by combining index and project name
+            if st.button(row['project_name'], key=f"sidebar_proj_{idx}_{row['project_name']}"):
                 st.session_state.selected_project_idx = idx
                 st.session_state.show_project_detail = True
                 st.session_state.show_edit_form = False

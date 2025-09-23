@@ -43,7 +43,10 @@ def show_dashboard():
     "<h2 style='text-align: center; margin-top: 20px;'>📊 Dashboard</h2>",
     unsafe_allow_html=True
     )
+<<<<<<< HEAD
     st.markdown("---")  # Add separator line
+=======
+>>>>>>> 7e2e2c8f15568e164777d67356edfdf5fd527be4
     
     # Load data
     df = load_tasks()

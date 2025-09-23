@@ -112,9 +112,8 @@ def handle_tasks(user_email):
         if not users_list:
             st.error("No users available. Please check your user configuration.")
             return
-        assigned_to = st.selectbox("Assign To", users_list)
-        if assigned_to:
-            assigned_to = assigned_to.strip().lower()
+        assigned_to_list = st.multiselect("Assign To (multiple allowed)", users_list)
+        assigned_to_list = [a.strip().lower() for a in assigned_to_list if a]
         priority = st.selectbox("Priority", ["Low", "Medium", "High"])
         status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"])
         start = st.date_input("Start Date", date.today())
@@ -136,33 +135,37 @@ def handle_tasks(user_email):
                 if not task_name:
                     st.error("Task name is required.")
                     return
-                if not assigned_to:
-                    st.error("Please select a user to assign the task to.")
+                if not assigned_to_list:
+                    st.error("Please select at least one user to assign the task to.")
                     return
-                # Prepare task data
-                task_data = {
-                    "task_name": task_name,
-                    "description": description,
-                    "project_name": project_name,
-                    "assigned_to": assigned_to,
-                    "priority": priority,
-                    "status": status,
-                    "start_date": start,
-                    "due_date": due,
-                    "completion_date": comp_date if show_completion else None,
-                    "comments": comments,
-                    "created_by": user_email
-                }
-                # Save task with error handling
-                try:
-                    if save_task(task_data):
-                        st.success("Task saved successfully!")
-                        st.session_state.task_page = "Tasks"
-                        st.rerun()
-                    else:
-                        st.error("Failed to save task. Please try again.")
-                except Exception as e:
-                    st.error(f"Error saving task: {str(e)}")
+                # Save a row for each assignee
+                save_success = True
+                for assigned_to in assigned_to_list:
+                    task_data = {
+                        "task_name": task_name,
+                        "description": description,
+                        "project_name": project_name,
+                        "assigned_to": assigned_to,
+                        "priority": priority,
+                        "status": status,
+                        "start_date": start,
+                        "due_date": due,
+                        "completion_date": comp_date if show_completion else None,
+                        "comments": comments,
+                        "created_by": user_email
+                    }
+                    try:
+                        if not save_task(task_data):
+                            save_success = False
+                    except Exception as e:
+                        st.error(f"Error saving task for {assigned_to}: {str(e)}")
+                        save_success = False
+                if save_success:
+                    st.success("Task(s) saved successfully!")
+                    st.session_state.task_page = "Tasks"
+                    st.rerun()
+                else:
+                    st.error("Failed to save one or more tasks. Please try again.")
         with col2:
             if st.button("🔙 Back", key="back_task"):
                 st.session_state.task_page = "Tasks"
@@ -623,15 +626,6 @@ def handle_tasks(user_email):
         if selected_assignee:
             filtered_df = filtered_df[filtered_df['assigned_to'].isin(selected_assignee)]
 
-        # Show Create New Task button below filters for authorized users
-        authorized_users = load_users()
-        if user_email in authorized_users:
-            if st.button("+ Create New Task", key="create_new_task_btn"):
-                st.session_state.task_page = "NewTask"
-                st.rerun()
-        else:
-            st.button("+ Create New Task", key="unauthorized_create_task_btn", disabled=True)
-
         # Show filtered table data
         if filtered_df.empty:
             st.info("No tasks available for the selected filters.")
@@ -687,6 +681,10 @@ def handle_tasks(user_email):
         st.write("Logged in as:", user_email)
         my_tasks = df[df['assigned_to'] == user_email]
 
+        # Add Create New Task button for all users in My Tasks tab
+        if st.button("+ Create New Task", key="create_new_task_btn_my_tasks"):
+            st.session_state.task_page = "NewTask"
+            st.rerun()
         if my_tasks.empty:
             st.info("You have no assigned tasks.")
         else:

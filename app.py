@@ -160,7 +160,6 @@ def home():
         unsafe_allow_html=True
     )
     st.markdown("---")  # Add separator line
-    st.info("Select an option from the sidebar to continue.")
     show_dashboard()
 
 def show_projects():
