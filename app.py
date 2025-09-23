@@ -8,6 +8,7 @@ from Dashboard import show_dashboard, initialize_session
 from datetime import datetime
 
 # Import Google Sheets integration for user names
+
 try:
     from google_sheets_integration import get_user_name_from_sheets, check_user_credentials, get_cached_data
     USE_GOOGLE_SHEETS = True
@@ -16,6 +17,7 @@ except ImportError:
     st.error("Google Sheets integration is required but not available. Please check your configuration.")
 
 st.set_page_config(layout="wide")
+
 
 # === Session Initialization ===
 if "is_logged_in" not in st.session_state:
@@ -29,7 +31,17 @@ if "current_page" not in st.session_state:
 def validate_email(email):
     pattern = r"^[^\d][\w.-]*@(childhelpfoundationindia\.org|tigeranalytics\.com|skypathdigital\.com)$"
     return re.match(pattern, email)
-
+st.markdown(
+    """
+    <style>
+    /* Reduce top padding of main container */
+    .block-container {
+        padding-top: 1rem;   /* default ~6rem, reduce to move content up */
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 # === Get User Name ===
 def get_user_name(user_email):
     """Get user's name from Google Sheets credentials."""
@@ -69,6 +81,8 @@ def login_form():
     password = st.text_input("Enter password", type="password")
 
     if st.button("Login"):
+        # st.session_state["is_logged_in"] = True
+        # st.rerun()
         if USE_GOOGLE_SHEETS:
             # Check credentials using Google Sheets and password
             if check_user_credentials(email) and validate_email(email):
@@ -96,7 +110,7 @@ def sidebar():
     if st.sidebar.button("📁 Projects"):
         st.session_state["current_page"] = "Projects"
 
-    if st.sidebar.button("📝 Tasks"):
+    if st.sidebar.button("📝 Task Board"):
         st.session_state["current_page"] = "Tasks"
 
     st.sidebar.markdown("---")
@@ -121,30 +135,30 @@ def sidebar():
         st.rerun()
 
 # === Main Pages ===
+
 def home():
-    # Get user's actual name from credentials
-    user_name = get_user_name(st.session_state['user_email'])
     
-    # Header with logos at the very top
+
     header_col1, header_col2, header_col3 = st.columns([1, 3, 1])
-    
     with header_col1:
         if os.path.exists("logos/childlogo.jpg"):
             st.image("logos/childlogo.jpg", width=120)
         else:
             st.empty()
-    
     with header_col2:
-        st.markdown("<h1 style='text-align: center; margin-top: 20px;'>👋 Welcome, {}</h1>".format(
-            user_name
-        ), unsafe_allow_html=True)
-    
+        st.empty()
     with header_col3:
         if os.path.exists("logos/tigerlogo.jpg"):
             st.image("logos/tigerlogo.jpg", width=120)
         else:
             st.empty()
     
+    # All other page content below this block...
+    user_name = get_user_name(st.session_state['user_email'])
+    st.markdown(
+        f"<h1 style='text-align: center; margin-top: -20px;'>👋 Welcome, {user_name}</h1>",
+        unsafe_allow_html=True
+    )
     st.markdown("---")  # Add separator line
     st.info("Select an option from the sidebar to continue.")
     show_dashboard()

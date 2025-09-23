@@ -70,7 +70,7 @@ def handle_projects(user_email):
             st.empty()
     
     with projects_header_col2:
-        st.markdown("<h1 style='text-align: center; margin-top: 20px;'>📁 Projects</h1>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; margin-top: 20px;'>📁 Projects</h2>", unsafe_allow_html=True)
     
     with projects_header_col3:
         if os.path.exists("logos/tigerlogo.jpg"):
