@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 from datetime import date, datetime, timedelta
+from st_aggrid import AgGrid, GridOptionsBuilder
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -111,9 +112,14 @@ def handle_tasks(user_email):
         if not users_list:
             st.error("No users available. Please check your user configuration.")
             return
-        assigned_to = st.selectbox("Assign To", users_list)
+        assigned_to = st.multiselect("Assign To", users_list)
+        
         if assigned_to:
-            assigned_to = assigned_to.strip().lower()
+            if isinstance(assigned_to, list):
+                assigned_to = [a.strip().lower() for a in assigned_to]
+            else:
+                assigned_to = [assigned_to.strip().lower()]
+
         priority = st.selectbox("Priority", ["Low", "Medium", "High"])
         status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"])
         start = st.date_input("Start Date", date.today())
@@ -136,14 +142,15 @@ def handle_tasks(user_email):
                     st.error("Task name is required.")
                     return
                 if not assigned_to:
-                    st.error("Please select a user to assign the task to.")
+                    st.error("Please select at least one user to assign the task to.")
                     return
+
                 # Prepare task data
                 task_data = {
                     "task_name": task_name,
                     "description": description,
                     "project_name": project_name,
-                    "assigned_to": assigned_to,
+                    "assigned_to": ", ".join(assigned_to),
                     "priority": priority,
                     "status": status,
                     "start_date": start,
@@ -595,14 +602,7 @@ def handle_tasks(user_email):
         if selected_assignee:
             filtered_df = filtered_df[filtered_df['assigned_to'].isin(selected_assignee)]
 
-        # Show Create New Task button below filters for authorized users
-        authorized_users = load_users()
-        if user_email in authorized_users:
-            if st.button("+ Create New Task", key="create_new_task_btn"):
-                st.session_state.task_page = "NewTask"
-                st.rerun()
-        else:
-            st.button("+ Create New Task", key="unauthorized_create_task_btn", disabled=True)
+       
 
         # Show filtered table data
         if filtered_df.empty:
@@ -633,6 +633,8 @@ def handle_tasks(user_email):
                 if col in display_df.columns:
                     display_df[col] = display_df[col].apply(lambda x: x.strftime("%Y-%m-%d") if pd.notna(x) and x != "" else "")
             st.dataframe(display_df, use_container_width=True)
+            
+           
 
         # Confirmation dialog for authorized user
         if st.session_state.get("show_create_task_warning"):
@@ -658,6 +660,15 @@ def handle_tasks(user_email):
         st.subheader("👤 My Tasks")
         st.write("Logged in as:", user_email)
         my_tasks = df[df['assigned_to'] == user_email]
+
+         # Show Create New Task button below filters for authorized users
+        authorized_users = load_users()
+        if user_email in authorized_users:
+            if st.button("+ Create New Task", key="create_new_task_btn"):
+                st.session_state.task_page = "NewTask"
+                st.rerun()
+        else:
+            st.button("+ Create New Task", key="unauthorized_create_task_btn", disabled=True)
 
         if my_tasks.empty:
             st.info("You have no assigned tasks.")
