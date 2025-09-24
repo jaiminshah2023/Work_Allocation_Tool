@@ -81,8 +81,6 @@ def login_form():
     password = st.text_input("Enter password", type="password")
 
     if st.button("Login"):
-        # st.session_state["is_logged_in"] = True
-        # st.rerun()
         if USE_GOOGLE_SHEETS:
             # Check credentials using Google Sheets and password
             if check_user_credentials(email) and validate_email(email):

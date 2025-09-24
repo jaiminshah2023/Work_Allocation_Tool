@@ -18,9 +18,7 @@ except ImportError:
     USE_GOOGLE_SHEETS = False
     st.error("Google Sheets integration is required but not available. Please check your configuration.")
 
-# Remove local file references - all data now comes from Google Sheets
-
- 
+# Remove local file references - all data now comes from Google Sheets 
 # === Load Tasks ===
 def load_tasks():
     if USE_GOOGLE_SHEETS:
@@ -319,14 +317,14 @@ def handle_tasks(user_email):
                 st.write(f"**{completion_percentage:.1f}%** of today's tasks completed ({completed_today}/{total_today})")
 
     with tab_dashboard:
-        st.subheader("📊 Task Dashboard")
+        st.subheader("Task Dashboard")
         
         # Show logged in user info
         user_name = get_user_name(user_email)
         st.info(f"👤 **Logged in as:** {user_name}")
         
         # Add filters for dashboard
-        st.markdown("### 📊 Dashboard Filters")
+        st.markdown("### 📶 Dashboard Filters")
         
         # Create filter columns
         filter_col1, filter_col2 = st.columns(2)
@@ -397,7 +395,6 @@ def handle_tasks(user_email):
         
         with col1:
             with st.container(border=True):
-
                 st.metric(
                 label="Total completed tasks",
                 value=str(completed_tasks)
@@ -405,7 +402,6 @@ def handle_tasks(user_email):
         
         with col2:
             with st.container(border=True):
-
                   st.metric(
                 label="Total incomplete tasks", 
                 value=str(incomplete_tasks)
@@ -439,8 +435,7 @@ def handle_tasks(user_email):
                     st.markdown(
                 "<h5 style='font-size:25px; color:#333;'>📊 Total Tasks by Status</h5>",
                 unsafe_allow_html=True
-                )
-                    
+                )   
                     # Bar chart for tasks by status
                     status_counts = df_filtered['status'].value_counts().reset_index()
                     status_counts.columns = ['Status', 'Task Count']
@@ -449,7 +444,6 @@ def handle_tasks(user_email):
                         status_counts, 
                         x='Status', 
                         y='Task Count',
-                        # title="Task Distribution by Status",
                         color='Status',
                         text='Task Count',
                         color_discrete_sequence=px.colors.qualitative.Set3
@@ -464,7 +458,6 @@ def handle_tasks(user_email):
                 "<h5 style='font-size:25px; color:#333;'>📁 Total Tasks by Project</h5>",
                 unsafe_allow_html=True
                 )
-                    
                     # Bar chart for tasks by project
                     project_counts = df_filtered['project_name'].value_counts().reset_index()
                     project_counts.columns = ['Project', 'Task Count']
@@ -473,7 +466,6 @@ def handle_tasks(user_email):
                         project_counts, 
                         x='Project', 
                         y='Task Count',
-                        # title="Task Distribution by Project",
                         color='Project',
                         text='Task Count',
                         color_discrete_sequence=px.colors.qualitative.Pastel
@@ -495,7 +487,6 @@ def handle_tasks(user_email):
                 "<h5 style='font-size:25px; color:#333;'>📈 Task Completion Over Time</h5>",
                 unsafe_allow_html=True
                 )
-                   
                     # Prepare data for completion timeline
                     df_timeline = df_filtered.copy()
                     if 'completion_date' in df_timeline.columns:
@@ -516,7 +507,6 @@ def handle_tasks(user_email):
                                 timeline_data, 
                                 x='Date', 
                                 y='Cumulative Tasks',
-                                # title="Cumulative Task Completion",
                                 markers=True,
                                 color_discrete_sequence=['#1f77b4']
                             )
@@ -565,7 +555,6 @@ def handle_tasks(user_email):
                             month_status_counts, 
                             values='Count', 
                             names='Status',
-                            # title="Task Status Distribution (This Month)",
                             color_discrete_sequence=px.colors.qualitative.Set2
                         )
                         fig_pie.update_layout(height=400)

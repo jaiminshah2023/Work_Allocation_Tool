@@ -42,19 +42,14 @@ def show_dashboard():
     st.markdown(
     "<h2 style='text-align: center; margin-top: 20px;'>📊 Dashboard</h2>",
     unsafe_allow_html=True
-    )
-<<<<<<< HEAD
-    st.markdown("---")  # Add separator line
-=======
->>>>>>> 7e2e2c8f15568e164777d67356edfdf5fd527be4
-    
+    )  
     # Load data
     df = load_tasks()
     if not df.empty:
         df["assigned_to"] = df["assigned_to"].astype(str).str.strip().str.lower()
     
     # Add filters for dashboard
-    st.markdown("### 📊 Dashboard Filters")
+    st.markdown("### 📶 Dashboard Filters")
     
     # Create filter columns
     filter_col1, filter_col2 = st.columns(2)
@@ -132,9 +127,6 @@ def show_dashboard():
     
     with col1:
         with st.container(border=True):
-           
-             
-        
              st.metric(
             label="Total completed tasks",
             value=str(completed_tasks)
@@ -173,9 +165,6 @@ def show_dashboard():
         
         with col1:
              with st.container(border=True):
-                  
-                 
-                #   st.subheader("📊 Projects by Project Status")
                   st.markdown(
                 "<h5 style='font-size:25px; color:#333;'>📊 Projects by Project Status</h5>",
                 unsafe_allow_html=True
@@ -202,7 +191,6 @@ def show_dashboard():
                     project_status_counts,
                     values='Project Count',
                     names='Status',
-                    # title="Projects by Project Status",
                     hole=0.4,  # This makes it a doughnut chart
                     color_discrete_sequence=px.colors.qualitative.Set3
                     )
@@ -229,7 +217,6 @@ def show_dashboard():
                     incomplete_counts,
                     x='Project',
                     y='Incomplete Tasks',
-                    # title="Incomplete Tasks by Project",
                     color='Incomplete Tasks',
                     text='Incomplete Tasks',
                     color_continuous_scale='Reds'
@@ -263,7 +250,6 @@ def show_dashboard():
                     x='assigned_to',
                     y='Task Count',
                     color='status',
-                    # title="Tasks by Assignee and Status",
                     text='Task Count',
                     color_discrete_sequence=px.colors.qualitative.Pastel
                     )
@@ -292,7 +278,6 @@ def show_dashboard():
                 daily_counts,
                 x='start_date',
                 y='Tasks',
-                # title="Tasks Created Per Day",
                 text='Tasks',
                 color='Tasks',
                 color_continuous_scale='Blues'
@@ -322,7 +307,6 @@ def show_dashboard():
                     df_days_completed,
                     x='task_name',
                     y='days_taken',
-                    # title="Days Taken to Complete Each Task",
                     text='days_taken',
                     color='days_taken',
                     color_continuous_scale='Viridis'
