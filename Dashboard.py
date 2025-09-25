@@ -64,12 +64,12 @@ def show_dashboard():
     if not df.empty:
         df["assigned_to"] = df["assigned_to"].astype(str).str.strip().str.lower()
     
-        # ...existing code...
+
     
     main_col, right_col = st.columns([3, 1])
     
     with right_col:
-        # st.markdown("### 📊 Dashboard Filters")
+        st.markdown("### 📊 Dashboard Filters")
         filter_project = st.multiselect(
             "Filter by Project",
             options=df['project_name'].unique().tolist() if not df.empty else []
@@ -86,12 +86,8 @@ def show_dashboard():
             "Filter by Assignee",
             options=df['assigned_to'].unique().tolist() if not df.empty else [],
         )
-    
+
     with main_col:
-        # Place your main dashboard content here
-        # pass
-    # ...existing code...
-    
         # Apply filters
         df_filtered = df.copy()
         if not df_filtered.empty:
