@@ -57,8 +57,6 @@ def show_dashboard():
         else:
             st.empty()
     
-    # st.markdown("---")  # Add separator line
-    
     # Load data
     df = load_tasks()
     if not df.empty:
