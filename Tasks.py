@@ -171,22 +171,27 @@ def handle_tasks(user_email):
         return
 
     # Header with logos for Tasks page
-    tasks_header_col1, tasks_header_col2, tasks_header_col3 = st.columns([1, 3, 1])
+    st.markdown('') 
+    st.markdown('') 
+    tasks_header_col1, tasks_header_col2, tasks_header_col3 = st.columns([1, 3, 1],vertical_alignment='center')
     
     with tasks_header_col1:
-        if os.path.exists("logos/childlogo.jpg"):
-            st.image("logos/childlogo.jpg", width=100)
-        else:
-            st.empty()
+        with st.container(horizontal_alignment='center',vertical_alignment='center'):  
+            if os.path.exists("logos/childlogo.jpg"):
+                st.image("logos/childlogo.jpg", width=120)
+            else:
+                st.empty()
     
     with tasks_header_col2:
         st.markdown("<h2 style='text-align: center; margin-top: 20px;'>📝 Task Board</h2>", unsafe_allow_html=True)
     
     with tasks_header_col3:
-        if os.path.exists("logos/tigerlogo.jpg"):
-            st.image("logos/tigerlogo.jpg", width=100)
-        else:
-            st.empty()
+        with st.container():  
+        
+            if os.path.exists("logos/tigerlogo.jpg"):
+                st.image("logos/tigerlogo.jpg", width=120)
+            else:
+                st.empty()
     
     st.markdown("---")  # Add separator line
     

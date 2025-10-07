@@ -85,12 +85,10 @@ def init_google_sheets():
     try:
         # Get credentials from Streamlit secrets
         credentials_dict = st.secrets["google_service_account"]
-        
         # Create a clean dictionary for credentials
         clean_credentials = {}
         for key, value in credentials_dict.items():
             if key == "private_key":
-                # Clean up the private key - remove extra whitespace and ensure proper formatting
                 private_key = str(value).strip()
                 if not private_key.startswith("-----BEGIN PRIVATE KEY-----"):
                     private_key = "-----BEGIN PRIVATE KEY-----\n" + private_key
@@ -99,16 +97,16 @@ def init_google_sheets():
                 clean_credentials[key] = private_key
             else:
                 clean_credentials[key] = str(value).strip()
-        
+
         # Create credentials object
         credentials = Credentials.from_service_account_info(
             clean_credentials, scopes=SCOPES
         )
-        
+
         # Authorize and return client
         client = gspread.authorize(credentials)
         return client
-        
+
     except KeyError as e:
         st.error(f"Missing credential key in secrets: {e}")
         st.error("Please check your Streamlit secrets configuration.")

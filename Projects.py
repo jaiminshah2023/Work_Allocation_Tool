@@ -61,11 +61,13 @@ def handle_projects(user_email):
         return
 
     # Header with logos for Projects page
+    st.markdown('') 
+    st.markdown('') 
     projects_header_col1, projects_header_col2, projects_header_col3 = st.columns([1, 3, 1])
     
     with projects_header_col1:
         if os.path.exists("logos/childlogo.jpg"):
-            st.image("logos/childlogo.jpg", width=100)
+            st.image("logos/childlogo.jpg", width=120)
         else:
             st.empty()
     
@@ -74,7 +76,7 @@ def handle_projects(user_email):
     
     with projects_header_col3:
         if os.path.exists("logos/tigerlogo.jpg"):
-            st.image("logos/tigerlogo.jpg", width=100)
+            st.image("logos/tigerlogo.jpg", width=120)
         else:
             st.empty()
     

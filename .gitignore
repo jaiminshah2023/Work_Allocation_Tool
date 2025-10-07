@@ -13,7 +13,7 @@ __pycache__/
 venv/
 env/
 .env
-myenv
+
 
 # IDE files
 .vscode/
