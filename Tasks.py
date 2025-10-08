@@ -176,7 +176,7 @@ def handle_tasks(user_email):
     tasks_header_col1, tasks_header_col2, tasks_header_col3 = st.columns([1, 3, 1],vertical_alignment='center')
     
     with tasks_header_col1:
-        with st.container(horizontal_alignment='center',vertical_alignment='center'):  
+        with st.container(horizontal=True, horizontal_alignment='left',vertical_alignment='center'):  
             if os.path.exists("logos/childlogo.jpg"):
                 st.image("logos/childlogo.jpg", width=120)
             else:
@@ -186,8 +186,7 @@ def handle_tasks(user_email):
         st.markdown("<h2 style='text-align: center; margin-top: 20px;'>📝 Task Board</h2>", unsafe_allow_html=True)
     
     with tasks_header_col3:
-        with st.container():  
-        
+        with st.container(horizontal=True, horizontal_alignment='right',vertical_alignment='center'):
             if os.path.exists("logos/tigerlogo.jpg"):
                 st.image("logos/tigerlogo.jpg", width=120)
             else:

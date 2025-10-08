@@ -226,17 +226,19 @@ def home():
     st.markdown('') 
     header_col1, header_col2, header_col3 = st.columns([1, 3, 1])
     with header_col1:
-        if os.path.exists("logos/childlogo.jpg"):
-            st.image("logos/childlogo.jpg", width=120)
-        else:
-            st.empty()
+         with st.container(horizontal=True, horizontal_alignment='left',vertical_alignment='center'):  
+            if os.path.exists("logos/childlogo.jpg"):
+                st.image("logos/childlogo.jpg", width=120)
+            else:
+                st.empty()
     with header_col2:
         st.empty()
     with header_col3:
-        if os.path.exists("logos/tigerlogo.jpg"):
-            st.image("logos/tigerlogo.jpg", width=120)
-        else:
-            st.empty()
+        with st.container(horizontal=True, horizontal_alignment='right',vertical_alignment='center'):
+            if os.path.exists("logos/tigerlogo.jpg"):
+                st.image("logos/tigerlogo.jpg", width=120)
+            else:
+                st.empty()
     
     # All other page content below this block...
     user_name = get_user_name(st.session_state['user_email'])
