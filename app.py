@@ -23,7 +23,7 @@ if "is_logged_in" not in st.session_state:
 if "user_email" not in st.session_state:
     st.session_state["user_email"] = ""
 if "current_page" not in st.session_state:
-    st.session_state["current_page"] = "Tasks"
+    st.session_state["current_page"] = "Home"
 
 # === Email Validator ===
 def validate_email(email):
