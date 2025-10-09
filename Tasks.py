@@ -171,25 +171,7 @@ def handle_tasks(user_email):
                 st.rerun()
         return
 
-    # Header with logos for Tasks page
-    tasks_header_col1, tasks_header_col2, tasks_header_col3 = st.columns([1, 3, 1])
-    
-    with tasks_header_col1:
-        if os.path.exists("logos/childlogo.jpg"):
-            st.image("logos/childlogo.jpg", width=100)
-        else:
-            st.empty()
-    
-    with tasks_header_col2:
-        st.markdown("<h1 style='text-align: center; margin-top: 20px;'>📝 Tasks</h1>", unsafe_allow_html=True)
-    
-    with tasks_header_col3:
-        if os.path.exists("logos/tigerlogo.jpg"):
-            st.image("logos/tigerlogo.jpg", width=100)
-        else:
-            st.empty()
-    
-    st.markdown("---")  # Add separator line
+ 
     
     df = load_tasks()
     df["assigned_to"] = df["assigned_to"].astype(str).str.strip().str.lower()

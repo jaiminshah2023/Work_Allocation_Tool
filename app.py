@@ -23,7 +23,7 @@ if "is_logged_in" not in st.session_state:
 if "user_email" not in st.session_state:
     st.session_state["user_email"] = ""
 if "current_page" not in st.session_state:
-    st.session_state["current_page"] = "Tasks"
+    st.session_state["current_page"] = "Home"
 
 # === Email Validator ===
 def validate_email(email):
@@ -96,8 +96,8 @@ def sidebar():
     if st.sidebar.button("📁 Projects"):
         st.session_state["current_page"] = "Projects"
 
-    if st.sidebar.button("📝 Tasks"):
-        st.session_state["current_page"] = "Tasks"
+    if st.sidebar.button("📊 Projects Overview"):
+        st.session_state["current_page"] = "Projects Overview"
 
     st.sidebar.markdown("---")
     
@@ -146,13 +146,11 @@ def home():
             st.empty()
     
     st.markdown("---")  # Add separator line
-    show_dashboard()
+    handle_tasks(st.session_state["user_email"])
+    
 
 def show_projects():
     handle_projects(st.session_state["user_email"])
-
-def show_tasks():
-    handle_tasks(st.session_state["user_email"])
 
 # === Application Runner ===
 def main():
@@ -169,8 +167,8 @@ def main():
             home()
         elif page == "Projects":
             show_projects()
-        elif page == "Tasks":
-            show_tasks()
+        elif page == "Projects Overview":
+            show_dashboard()
 
 if __name__ == "__main__":
     main()
