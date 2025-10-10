@@ -7,21 +7,7 @@ from Tasks import handle_tasks
 from Dashboard import show_dashboard, initialize_session
 from datetime import datetime
 
-st.markdown(
-    """
-    <style>
-    /* Reduce top padding of main container */
-    .block-container {
-        padding-top: 1rem;   /* default ~6rem, reduce to move content up */
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
 # Import Google Sheets integration for user names
-
-
-
 try:
     from google_sheets_integration import get_user_name_from_sheets, check_user_credentials, get_cached_data
     USE_GOOGLE_SHEETS = True
@@ -30,7 +16,6 @@ except ImportError:
     st.error("Google Sheets integration is required but not available. Please check your configuration.")
 
 st.set_page_config(layout="wide")
-
 
 # === Session Initialization ===
 if "is_logged_in" not in st.session_state:
@@ -77,112 +62,29 @@ def show_data_status():
         
         st.sidebar.markdown("---")
 
+# === Login Form ===
 def login_form():
+    st.title("🔐 Login")
+    email = st.text_input("Enter your email")
+    password = st.text_input("Enter password", type="password")
 
-    # Top logo row (before login form)
-    st.markdown('')
-    st.markdown('')
-    logo_col1, logo_col2, logo_col3 = st.columns([1, 6, 1])
-
-    with logo_col1:
-        with st.container():
-            st.image("logos/childlogo.jpg", width=120)
-    with logo_col3:
-        with st.container():
-            st.image("logos/tigerlogo.jpg", width=120)
-
-    # CSS fixes (with custom border styles added)
-    st.markdown(
-    """
-    <style>
-    [data-testid="column"] img {
-        object-fit: contain;
-        margin-top: 32px;
-        height: auto !important;
-        max-width: 120px !important;
-    }
-
-    .login-title {
-        display: block;
-        width: 100%;
-        text-align: center;
-        font-size: 36px;
-        margin: 30px 0 25px 0;
-        color: #2C3E50;
-        font-weight: 700;
-    }
-
-    .input-label {
-        font-size: 19px;
-        font-weight: 550;
-        color: #2C3E50;
-        margin-bottom: 2px;
-    }
-
-    div.stTextInput > div {
-        margin-top: -10px !important;
-    }
-
-    /* Center login button */
-    div.stButton {
-        display: flex;
-        justify-content: center;
-    }
-
-    div.stButton > button {
-        width: 120px;
-        padding: 6px 0px !important;
-        font-size: 14px !important;
-        border-radius: 10px;
-        background-color: #2C3E50;
-        color: white;
-        border: none;
-        transition: 0.2s;
-    }
-
-    div.stButton > button:hover {
-        background-color: #34495E;
-        transform: scale(1.03);
-    }
-
-    div.stContainer > div:first-child {
-        border: 10px solid #2C3E50;  /* Increased thickness */
-        border-radius: 20px;         /* Rounded corners */
-        padding: 25px;               /* Inner spacing so content doesn't touch border */
-        box-shadow: 0 6px 15px rgba(0,0,0,0.2); /* Optional: subtle shadow */
-    }
-
-    </style>
-    """,
-    unsafe_allow_html=True
-    )
-
-    # Centered input fields and button
-    col1, col2, col3 = st.columns([2, 3, 2])
-    with col2:
-        with st.container(border=True, horizontal_alignment='center', vertical_alignment='center'):
-            st.markdown('<div class="login-title">Log-in</div>', unsafe_allow_html=True)
-            st.markdown('<div class="input-label">✉️ Email</div>', unsafe_allow_html=True)
-            email = st.text_input("", key="email", placeholder="Enter your email")
-            st.markdown('<div class="input-label">🔑 Password</div>', unsafe_allow_html=True)
-            password = st.text_input("", type="password", key="password", placeholder="Enter your password")
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            if st.button("Login", key="login_button"):
-                if USE_GOOGLE_SHEETS:
-                    if check_user_credentials(email) and validate_email(email):
-                        if password == "Child#1234":
-                            st.session_state["is_logged_in"] = True
-                            st.session_state["user_email"] = email.strip()
-                            st.success("Login successful!")
-                            st.rerun()
-                        else:
-                            st.error("Incorrect password.")
-                    else:
-                        st.error("Invalid email or user not found in system.")
+    if st.button("Login"):
+        if USE_GOOGLE_SHEETS:
+            # Check credentials using Google Sheets and password
+            if check_user_credentials(email) and validate_email(email):
+                if password == "Child#1234":
+                    st.session_state["is_logged_in"] = True
+                    st.session_state["user_email"] = email.strip()
+                    st.success("Login successful!")
+                    st.rerun()
                 else:
-                    st.error("Google Sheets integration is required for login. Please contact administrator.")
+                    st.error("Incorrect password.")
+            else:
+                st.error("Invalid email or user not found in system.")
+        else:
+            st.error("Google Sheets integration is required for login. Please contact administrator.")
 
+# === Sidebar ===
 def sidebar():
     
     # Show data status first
@@ -194,7 +96,7 @@ def sidebar():
     if st.sidebar.button("📁 Projects"):
         st.session_state["current_page"] = "Projects"
 
-    if st.sidebar.button("📝 Task Board"):
+    if st.sidebar.button("📝 Tasks"):
         st.session_state["current_page"] = "Tasks"
 
     st.sidebar.markdown("---")
@@ -219,33 +121,30 @@ def sidebar():
         st.rerun()
 
 # === Main Pages ===
-
 def home():
-    
-    st.markdown('') 
-    st.markdown('') 
-    header_col1, header_col2, header_col3 = st.columns([1, 3, 1])
-    with header_col1:
-         with st.container(horizontal=True, horizontal_alignment='left',vertical_alignment='center'):  
-            if os.path.exists("logos/childlogo.jpg"):
-                st.image("logos/childlogo.jpg", width=120)
-            else:
-                st.empty()
-    with header_col2:
-        st.empty()
-    with header_col3:
-        with st.container(horizontal=True, horizontal_alignment='right',vertical_alignment='center'):
-            if os.path.exists("logos/tigerlogo.jpg"):
-                st.image("logos/tigerlogo.jpg", width=120)
-            else:
-                st.empty()
-    
-    # All other page content below this block...
+    # Get user's actual name from credentials
     user_name = get_user_name(st.session_state['user_email'])
-    st.markdown(
-        f"<h2 style='text-align: center; margin-top: -20px;'>👋 Welcome, {user_name}</h2>",
-        unsafe_allow_html=True
-    )
+    
+    # Header with logos at the very top
+    header_col1, header_col2, header_col3 = st.columns([1, 3, 1])
+    
+    with header_col1:
+        if os.path.exists("logos/childlogo.jpg"):
+            st.image("logos/childlogo.jpg", width=120)
+        else:
+            st.empty()
+    
+    with header_col2:
+        st.markdown("<h1 style='text-align: center; margin-top: 20px;'>👋 Welcome, {}</h1>".format(
+            user_name
+        ), unsafe_allow_html=True)
+    
+    with header_col3:
+        if os.path.exists("logos/tigerlogo.jpg"):
+            st.image("logos/tigerlogo.jpg", width=120)
+        else:
+            st.empty()
+    
     st.markdown("---")  # Add separator line
     show_dashboard()
 
