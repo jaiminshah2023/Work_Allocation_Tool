@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import os
 from datetime import date
+ 
+from Tasks import load_tasks_from_sheets
 
 # Import Google Sheets integration
 try:
@@ -150,8 +152,14 @@ def handle_projects(user_email):
                     "created_by": created_by
                 })
                 st.success("Project saved successfully!")
+                 # adjust this import if needed
+                df = load_tasks_from_sheets()  # get the latest tasks
+
                 st.session_state.show_create_form = False
                 st.rerun()
+
+                # st.session_state.show_create_form = False
+                # st.rerun()
         with col2:
             if st.button("🔙 Back", key="back_create_project"):
                 st.session_state.show_create_form = False

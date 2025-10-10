@@ -331,14 +331,24 @@ def handle_tasks(user_email):
         st.markdown("### 📶 Dashboard Filters")
         
         # Create filter columns
+        all_projects = []
+        try:
+            all_projects = load_projects()
+        except Exception:
+            all_projects = []
+        if not df.empty and 'project_name' in df.columns:
+            all_projects = list(set(all_projects) | set(df['project_name'].dropna().unique().tolist()))
+        all_projects = sorted(all_projects)
+        
+        # Create filter columns
         filter_col1, filter_col2 = st.columns(2)
         filter_col3, filter_col4 = st.columns(2)
         
         with filter_col1:
             filter_project = st.multiselect(
                 "Filter by Project",
-                options=df['project_name'].unique().tolist() if not df.empty else [],
-                default=df['project_name'].unique().tolist() if not df.empty else []
+                options=all_projects,
+                default=all_projects
             )
         
         with filter_col2:
@@ -361,6 +371,8 @@ def handle_tasks(user_email):
                 options=df['assigned_to'].unique().tolist() if not df.empty else [],
                 default=df['assigned_to'].unique().tolist() if not df.empty else []
             )
+        
+        # ...rest of the code...
         
         # Apply filters
         df_filtered = df.copy()
@@ -577,13 +589,22 @@ def handle_tasks(user_email):
     with tab_all:
         st.subheader("📋 All Tasks")
         # Show filters horizontally at the top, matching Dashboard style
+        all_projects = []
+        try:
+            all_projects = load_projects()
+        except Exception:
+            all_projects = []
+        if not df.empty and 'project_name' in df.columns:
+            all_projects = list(set(all_projects) | set(df['project_name'].dropna().unique().tolist()))
+        all_projects = sorted(all_projects)
+
         filter_col1, filter_col2 = st.columns(2)
         filter_col3, filter_col4 = st.columns(2)
         with filter_col1:
             selected_project = st.multiselect(
                 "Filter by Project",
-                options=sorted(df['project_name'].dropna().unique().tolist()),
-                default=sorted(df['project_name'].dropna().unique().tolist()),
+                options=all_projects,
+                default=all_projects,
                 key="all_tasks_project_filter"
             )
         with filter_col2:
@@ -618,6 +639,8 @@ def handle_tasks(user_email):
             filtered_df = filtered_df[filtered_df['priority'].isin(selected_priority)]
         if selected_assignee:
             filtered_df = filtered_df[filtered_df['assigned_to'].isin(selected_assignee)]
+
+        # ...rest of the code...
 
         # Show filtered table data
         if filtered_df.empty:
