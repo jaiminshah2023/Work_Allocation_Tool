@@ -116,7 +116,7 @@ def handle_tasks(user_email):
         status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"])
         start = st.date_input("Start Date", date.today())
         start = pd.to_datetime(start).date()
-        due = st.date_input("Due Date")
+        due = st.date_input("Due Date", value=start, min_value=start)
         due = pd.to_datetime(due).date()
 
         show_completion = status == "Completed"
@@ -753,19 +753,28 @@ def handle_tasks(user_email):
                 with st.form(key=f"edit_task_form_{edit_idx}", clear_on_submit=False):
                     new_task_name = st.text_input("Task Name", value=edit_row.get("task_name", ""))
                     new_description = st.text_area("Description", value=edit_row.get("description", ""))
-                    new_due_date = st.date_input("Due Date", value=pd.to_datetime(edit_row.get("due_date", date.today())).date() if pd.notna(edit_row.get("due_date")) else date.today())
+                    # Note: assigned_to and created_by are kept as original, not editable
+                    new_start_date = st.date_input("Start Date", value=pd.to_datetime(edit_row.get("start_date", date.today())).date() if pd.notna(edit_row.get("start_date")) else date.today())
+                    new_start_date = pd.to_datetime(new_start_date).date()
+                    new_due_date = st.date_input("Due Date", value=pd.to_datetime(edit_row.get("due_date", new_start_date)).date() if pd.notna(edit_row.get("due_date")) else new_start_date, min_value=new_start_date)
                     new_due_date = pd.to_datetime(new_due_date).date()
                     new_priority = st.selectbox("Priority", ["Low", "Medium", "High"], index=["Low", "Medium", "High"].index(edit_row.get("priority", "Medium")))
                     new_status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"], index=["Not Started", "In Progress", "Completed"].index(edit_row.get("status", "Not Started")))
                     new_project = st.selectbox("Project", load_projects(), index=load_projects().index(edit_row.get("project_name", "")) if edit_row.get("project_name", "") in load_projects() else 0)
-                    # Note: assigned_to and created_by are kept as original, not editable
-                    new_start_date = st.date_input("Start Date", value=pd.to_datetime(edit_row.get("start_date", date.today())).date() if pd.notna(edit_row.get("start_date")) else date.today())
-                    new_start_date = pd.to_datetime(new_start_date).date()
                     
                     # Completion Date - only show if status is Completed
                     show_completion = new_status == "Completed"
                     if show_completion:
-                        new_completion_date = st.date_input("Completion Date", value=pd.to_datetime(edit_row.get("completion_date", date.today())).date() if pd.notna(edit_row.get("completion_date")) else date.today())
+                        # Set default completion date to today or existing, but not before start date
+                        default_completion_date = pd.to_datetime(edit_row.get("completion_date", date.today())).date() if pd.notna(edit_row.get("completion_date")) else date.today()
+                        if default_completion_date < new_start_date:
+                            default_completion_date = new_start_date
+                        
+                        new_completion_date = st.date_input(
+                            "Completion Date", 
+                            value=default_completion_date, 
+                            min_value=new_start_date
+                        )
                         new_completion_date = pd.to_datetime(new_completion_date).date()
                     else:
                         new_completion_date = None

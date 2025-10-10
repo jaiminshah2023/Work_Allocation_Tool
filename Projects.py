@@ -115,7 +115,7 @@ def handle_projects(user_email):
 
         # End Date only enabled if status is Completed
         if status == "Completed":
-            end_date = st.date_input("Project Completion Date", value=date.today())
+            end_date = st.date_input("Project Completion Date", value=start_date, min_value=start_date)
             end_date = pd.to_datetime(end_date).date()
         else:
             st.text_input("Project Completion Date (set status to Completed to enable)", value="", disabled=True, key="disabled_proj_end_date")
@@ -205,7 +205,16 @@ def handle_projects(user_email):
         priority = st.selectbox("Priority", priority_options, index=priority_options.index(priority_value))
         # End Date only enabled if status is Completed
         if status == "Completed":
-            end_date = st.date_input("Project Completion Date", value=pd.to_datetime(project['end_date']).date() if pd.notna(project['end_date']) else date.today())
+            # Set default end date to existing end date or start date, whichever is later
+            default_end_date = pd.to_datetime(project['end_date']).date() if pd.notna(project['end_date']) else start_date
+            if default_end_date < start_date:
+                default_end_date = start_date
+            
+            end_date = st.date_input(
+                "Project Completion Date", 
+                value=default_end_date, 
+                min_value=start_date
+            )
             end_date = pd.to_datetime(end_date).date()
         else:
             st.text_input("Project Completion Date (set status to Completed to enable)", value="", disabled=True, key="disabled_edit_proj_end_date")
