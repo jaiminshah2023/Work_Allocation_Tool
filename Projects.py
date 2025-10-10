@@ -61,22 +61,26 @@ def handle_projects(user_email):
         return
 
     # Header with logos for Projects page
+    st.markdown('') 
+    st.markdown('') 
     projects_header_col1, projects_header_col2, projects_header_col3 = st.columns([1, 3, 1])
     
     with projects_header_col1:
-        if os.path.exists("logos/childlogo.jpg"):
-            st.image("logos/childlogo.jpg", width=100)
-        else:
-            st.empty()
+         with st.container(horizontal=True, horizontal_alignment='left',vertical_alignment='center'):  
+            if os.path.exists("logos/childlogo.jpg"):
+                st.image("logos/childlogo.jpg", width=120)
+            else:
+                st.empty()
     
     with projects_header_col2:
-        st.markdown("<h1 style='text-align: center; margin-top: 20px;'>📁 Projects</h1>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; margin-top: 20px;'>📁 Projects</h2>", unsafe_allow_html=True)
     
     with projects_header_col3:
-        if os.path.exists("logos/tigerlogo.jpg"):
-            st.image("logos/tigerlogo.jpg", width=100)
-        else:
-            st.empty()
+         with st.container(horizontal=True, horizontal_alignment='right',vertical_alignment='center'):
+            if os.path.exists("logos/tigerlogo.jpg"):
+                st.image("logos/tigerlogo.jpg", width=120)
+            else:
+                st.empty()
     
     st.markdown("---")  # Add separator line
 
