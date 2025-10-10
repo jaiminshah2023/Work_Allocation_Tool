@@ -39,17 +39,17 @@ def load_tasks():
 
 # === Show Dashboard ===
 def show_dashboard():
-    # Header with logos for Dashboard
-    dashboard_header_col1, dashboard_header_col2, dashboard_header_col3 = st.columns([1, 3, 1])
-    
-    
+    st.markdown(
+    "<h2 style='text-align: center; margin-top: 20px;'>📊 Dashboard</h2>",
+    unsafe_allow_html=True
+    )  
     # Load data
     df = load_tasks()
     if not df.empty:
         df["assigned_to"] = df["assigned_to"].astype(str).str.strip().str.lower()
     
     # Add filters for dashboard
-    st.markdown("### 📊 Dashboard Filters")
+    st.markdown("### 📶 Dashboard Filters")
     
     # Create filter columns
     filter_col1, filter_col2 = st.columns(2)
@@ -126,28 +126,33 @@ def show_dashboard():
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric(
+        with st.container(border=True):
+             st.metric(
             label="Total completed tasks",
             value=str(completed_tasks)
-        )
+            )
     
     with col2:
-        st.metric(
+        with st.container(border=True):
+           st.metric(
             label="Total incomplete tasks", 
             value=str(incomplete_tasks)
-        )
+           )
     
     with col3:
-        st.metric(
+        with st.container(border=True):
+
+            st.metric(
             label="Total overdue tasks",
             value=str(overdue_tasks)
-        )
+            )
     
     with col4:
-        st.metric(
+        with st.container(border=True):
+            st.metric(
             label="Total tasks",
             value=str(total_tasks)
-        )
+            )
     
     # Add some spacing
     st.markdown("---")
@@ -159,95 +164,112 @@ def show_dashboard():
         col1, col2 = st.columns(2)
         
         with col1:
-            st.subheader("📊 Projects by Project Status")
+             with st.container(border=True):
+                  st.markdown(
+                "<h5 style='font-size:25px; color:#333;'>📊 Projects by Project Status</h5>",
+                unsafe_allow_html=True
+                )
             # Doughnut chart for projects by status
-            if 'project_name' in df_filtered.columns and 'status' in df_filtered.columns:
+                  if 'project_name' in df_filtered.columns and 'status' in df_filtered.columns:
                 # Group projects by their overall status
-                def get_project_status(x):
-                    if all(x == 'Completed'):
-                        return 'Completed'
-                    elif all(x == 'Not Started'):
-                        return 'Not Started'
-                    else:
-                        return 'In Progress'
-                project_status = df_filtered.groupby('project_name')['status'].apply(get_project_status).reset_index()
-                project_status.columns = ['Project', 'Project Status']
+                    def get_project_status(x):
+                        if all(x == 'Completed'):
+                                 return 'Completed'
+                        elif all(x == 'Not Started'):
+                                 return 'Not Started'
+                        else:
+                                 return 'In Progress'
+                    project_status = df_filtered.groupby('project_name')['status'].apply(get_project_status).reset_index()
+                    project_status.columns = ['Project', 'Project Status']
 
                 # Ensure all status types are present
-                all_status_types = ['Not Started', 'In Progress', 'Completed']
-                project_status_counts = project_status['Project Status'].value_counts().reindex(all_status_types, fill_value=0).reset_index()
-                project_status_counts.columns = ['Status', 'Project Count']
+                    all_status_types = ['Not Started', 'In Progress', 'Completed']
+                    project_status_counts = project_status['Project Status'].value_counts().reindex(all_status_types, fill_value=0).reset_index()
+                    project_status_counts.columns = ['Status', 'Project Count']
 
-                fig_doughnut = px.pie(
+                    fig_doughnut = px.pie(
                     project_status_counts,
                     values='Project Count',
                     names='Status',
-                    title="Projects by Project Status",
                     hole=0.4,  # This makes it a doughnut chart
                     color_discrete_sequence=px.colors.qualitative.Set3
-                )
-                fig_doughnut.update_layout(height=400)
-                st.plotly_chart(fig_doughnut, use_container_width=True)
-            else:
-                st.info("No project data available for status analysis.")
+                    )
+                    fig_doughnut.update_layout(height=400)
+                    st.plotly_chart(fig_doughnut, use_container_width=True)
+                  else:
+                       st.info("No project data available for status analysis.")
         
         with col2:
-            st.subheader("📈 Incomplete Tasks by Project")
+             with st.container(border=True):
+                st.markdown(
+                "<h5 style='font-size:25px; color:#333;'>📈 Incomplete Tasks by Project</h5>",
+                unsafe_allow_html=True
+                )
+               
             # Bar chart for incomplete tasks by project
-            incomplete_tasks_data = df_filtered[df_filtered['status'] != 'Completed']
-            if not incomplete_tasks_data.empty:
-                incomplete_counts = incomplete_tasks_data['project_name'].value_counts().reset_index()
-                incomplete_counts.columns = ['Project', 'Incomplete Tasks']
+                incomplete_tasks_data = df_filtered[df_filtered['status'] != 'Completed']
+                if not incomplete_tasks_data.empty:
+
+                    incomplete_counts = incomplete_tasks_data['project_name'].value_counts().reset_index()
+                    incomplete_counts.columns = ['Project', 'Incomplete Tasks']
                 
-                fig_incomplete = px.bar(
+                    fig_incomplete = px.bar(
                     incomplete_counts,
                     x='Project',
                     y='Incomplete Tasks',
-                    title="Incomplete Tasks by Project",
                     color='Incomplete Tasks',
                     text='Incomplete Tasks',
                     color_continuous_scale='Reds'
-                )
-                fig_incomplete.update_traces(texttemplate='%{text}', textposition='outside')
-                fig_incomplete.update_layout(
+                    )
+                    fig_incomplete.update_traces(texttemplate='%{text}', textposition='outside')
+                    fig_incomplete.update_layout(
                     height=400,
                     xaxis_tickangle=-45,
                     showlegend=False
-                )
-                st.plotly_chart(fig_incomplete, use_container_width=True)
-            else:
-                st.info("No incomplete tasks found.")
+                    )
+                    st.plotly_chart(fig_incomplete, use_container_width=True)
+                else:
+                    st.info("No incomplete tasks found.")
         
         # Row 2: Only show Tasks by Assignee and Status (remove Completion Timeline)
         col3, _ = st.columns(2)
         with col3:
-            st.subheader("👥 Total Tasks by Assignee and Task Status")
+            with st.container(border=True):
+                st.markdown(
+                "<h5 style='font-size:25px; color:#333;'>👥 Total Tasks by Assignee and Task Status</h5>",
+                unsafe_allow_html=True
+                )
+
+                
             # Stacked bar chart for tasks by assignee and status
-            if not df_filtered.empty:
-                assignee_status = df_filtered.groupby(['assigned_to', 'status']).size().reset_index(name='Task Count')
-                fig_assignee = px.bar(
+                if not df_filtered.empty:
+
+                    assignee_status = df_filtered.groupby(['assigned_to', 'status']).size().reset_index(name='Task Count')
+                    fig_assignee = px.bar(
                     assignee_status,
                     x='assigned_to',
                     y='Task Count',
                     color='status',
-                    title="Tasks by Assignee and Status",
                     text='Task Count',
                     color_discrete_sequence=px.colors.qualitative.Pastel
-                )
-                fig_assignee.update_traces(texttemplate='%{text}', textposition='inside')
-                fig_assignee.update_layout(
+                    )
+                    fig_assignee.update_traces(texttemplate='%{text}', textposition='inside')
+                    fig_assignee.update_layout(
                     height=400,
                     xaxis_tickangle=-45,
                     xaxis_title="Assignee",
                     yaxis_title="Task Count",
                     legend_title="Status"
-                )
-                st.plotly_chart(fig_assignee, use_container_width=True)
-            else:
-                st.info("No task assignment data available.")
+                    )
+                    st.plotly_chart(fig_assignee, use_container_width=True)
+                else:
+                    st.info("No task assignment data available.")
         # --- Daily basis tasks chart ---
         st.markdown("---")
-        st.subheader("📅 Daily Basis Tasks")
+        st.markdown(
+                "<h5 style='font-size:25px; color:#333;'>📅 Daily Basis Tasks</h5>",
+                unsafe_allow_html=True
+        )
         if not df_filtered.empty and 'start_date' in df_filtered.columns:
             df_daily = df_filtered.copy()
             df_daily['start_date'] = pd.to_datetime(df_daily['start_date'], errors='coerce')
@@ -256,7 +278,6 @@ def show_dashboard():
                 daily_counts,
                 x='start_date',
                 y='Tasks',
-                title="Tasks Created Per Day",
                 text='Tasks',
                 color='Tasks',
                 color_continuous_scale='Blues'
@@ -269,7 +290,10 @@ def show_dashboard():
 
         # --- Days taken to complete each task chart ---
         st.markdown("---")
-        st.subheader("⏳ Days Taken to Complete Each Task")
+        st.markdown(
+                "<h5 style='font-size:25px; color:#333;'>⏳Days Taken to Complete Each Task</h5>",
+                unsafe_allow_html=True
+        )
         if not df_filtered.empty and 'start_date' in df_filtered.columns and 'completion_date' in df_filtered.columns:
             df_days = df_filtered.copy()
             df_days['start_date'] = pd.to_datetime(df_days['start_date'], errors='coerce')
@@ -283,7 +307,6 @@ def show_dashboard():
                     df_days_completed,
                     x='task_name',
                     y='days_taken',
-                    title="Days Taken to Complete Each Task",
                     text='days_taken',
                     color='days_taken',
                     color_continuous_scale='Viridis'
