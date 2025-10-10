@@ -372,8 +372,6 @@ def handle_tasks(user_email):
                 default=df['assigned_to'].unique().tolist() if not df.empty else []
             )
         
-        # ...rest of the code...
-        
         # Apply filters
         df_filtered = df.copy()
         if not df_filtered.empty:
@@ -639,8 +637,6 @@ def handle_tasks(user_email):
             filtered_df = filtered_df[filtered_df['priority'].isin(selected_priority)]
         if selected_assignee:
             filtered_df = filtered_df[filtered_df['assigned_to'].isin(selected_assignee)]
-
-        # ...rest of the code...
 
         # Show filtered table data
         if filtered_df.empty:
