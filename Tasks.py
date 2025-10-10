@@ -740,7 +740,16 @@ def handle_tasks(user_email):
                     # Completion Date - only show if status is Completed
                     show_completion = new_status == "Completed"
                     if show_completion:
-                        new_completion_date = st.date_input("Completion Date", value=pd.to_datetime(edit_row.get("completion_date", date.today())).date() if pd.notna(edit_row.get("completion_date")) else date.today())
+                        # Set default completion date to today or existing, but not before start date
+                        default_completion_date = pd.to_datetime(edit_row.get("completion_date", date.today())).date() if pd.notna(edit_row.get("completion_date")) else date.today()
+                        if default_completion_date < new_start_date:
+                            default_completion_date = new_start_date
+                        
+                        new_completion_date = st.date_input(
+                            "Completion Date", 
+                            value=default_completion_date, 
+                            min_value=new_start_date
+                        )
                         new_completion_date = pd.to_datetime(new_completion_date).date()
                     else:
                         new_completion_date = None
