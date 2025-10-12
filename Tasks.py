@@ -21,6 +21,7 @@ except ImportError:
 # Remove local file references - all data now comes from Google Sheets
 
 # === Load Tasks ===
+@st.cache_data(ttl=60)
 def load_tasks():
     if USE_GOOGLE_SHEETS:
         return load_tasks_from_sheets()
@@ -570,15 +571,6 @@ def handle_tasks(user_email):
                 if selected_assignee:
                     filtered_df = filtered_df[filtered_df['assigned_to'].isin(selected_assignee)]
 
-                # Show Create New Task button below filters for authorized users
-                authorized_users = load_users()
-                if user_email in authorized_users:
-                    if st.button("+ Create New Task", key="create_new_task_btn"):
-                        st.session_state.task_page = "NewTask"
-                        st.rerun()
-                else:
-                    st.button("+ Create New Task", key="unauthorized_create_task_btn", disabled=True)
-
                 # Show filtered table data
                 if filtered_df.empty:
                     st.info("No tasks available for the selected filters.")
@@ -633,6 +625,15 @@ def handle_tasks(user_email):
                 st.subheader("👤 My Tasks")
                 st.write("Logged in as:", user_email)
                 my_tasks = df[df['assigned_to'] == user_email]
+
+                # Show Create New Task button below filters for authorized users
+                authorized_users = load_users()
+                if user_email in authorized_users:
+                    if st.button("+ Create New Task", key="create_new_task_btn"):
+                        st.session_state.task_page = "NewTask"
+                        st.rerun()
+                else:
+                    st.button("+ Create New Task", key="unauthorized_create_task_btn", disabled=True)
 
                 if my_tasks.empty:
                     st.info("You have no assigned tasks.")

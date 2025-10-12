@@ -23,7 +23,7 @@ if "is_logged_in" not in st.session_state:
 if "user_email" not in st.session_state:
     st.session_state["user_email"] = ""
 if "current_page" not in st.session_state:
-    st.session_state["current_page"] = "Home"
+    st.session_state["current_page"] = "Tasks"
 
 # === Email Validator ===
 def validate_email(email):
@@ -90,8 +90,8 @@ def sidebar():
     # Show data status first
     show_data_status()
 
-    if st.sidebar.button("🏠 Home"):
-        st.session_state["current_page"] = "Home"
+    if st.sidebar.button("📝 Tasks"):
+        st.session_state["current_page"] = "Tasks"
 
     if st.sidebar.button("📁 Projects"):
         st.session_state["current_page"] = "Projects"
@@ -121,7 +121,7 @@ def sidebar():
         st.rerun()
 
 # === Main Pages ===
-def home():
+def tasks():
     # Get user's actual name from credentials
     user_name = get_user_name(st.session_state['user_email'])
     
@@ -163,8 +163,8 @@ def main():
         st.markdown("<br>", unsafe_allow_html=True)
         page = st.session_state["current_page"]
 
-        if page == "Home":
-            home()
+        if page == "Tasks":
+            tasks()
         elif page == "Projects":
             show_projects()
         elif page == "Projects Overview":
