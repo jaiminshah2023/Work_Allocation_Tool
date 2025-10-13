@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import os
 from datetime import date, datetime, timedelta
-
+from google_sheets_integration import load_projects_from_sheets
 # Import Google Sheets integration
 try:
     from google_sheets_integration import load_tasks_from_sheets
@@ -49,17 +49,26 @@ def show_dashboard():
         df["assigned_to"] = df["assigned_to"].astype(str).str.strip().str.lower()
     
     # Add filters for dashboard
+    all_projects = []
+    if USE_GOOGLE_SHEETS:
+        try:
+            all_projects = load_projects_from_sheets()
+        except Exception:
+            all_projects = []
+    if not df.empty and 'project_name' in df.columns:
+        all_projects = list(set(all_projects) | set(df['project_name'].dropna().unique().tolist()))
+    all_projects = sorted(all_projects)
+
+    # Add filters for dashboard
     st.markdown("### 📶 Dashboard Filters")
-    
-    # Create filter columns
     filter_col1, filter_col2 = st.columns(2)
     filter_col3, filter_col4 = st.columns(2)
-    
+
     with filter_col1:
         filter_project = st.multiselect(
             "Filter by Project",
-            options=df['project_name'].unique().tolist() if not df.empty else [],
-            default=df['project_name'].unique().tolist() if not df.empty else []
+            options=all_projects,
+            default=all_projects
         )
     
     with filter_col2:
