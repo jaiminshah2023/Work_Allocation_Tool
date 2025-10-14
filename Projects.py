@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import os
 from datetime import date
+ 
+from Tasks import load_tasks_from_sheets
 
 # Import Google Sheets integration
 try:
@@ -61,22 +63,26 @@ def handle_projects(user_email):
         return
 
     # Header with logos for Projects page
+    st.markdown('') 
+    st.markdown('') 
     projects_header_col1, projects_header_col2, projects_header_col3 = st.columns([1, 3, 1])
     
     with projects_header_col1:
-        if os.path.exists("logos/childlogo.jpg"):
-            st.image("logos/childlogo.jpg", width=100)
-        else:
-            st.empty()
+         with st.container(horizontal=True, horizontal_alignment='left',vertical_alignment='center'):  
+            if os.path.exists("logos/childlogo.jpg"):
+                st.image("logos/childlogo.jpg", width=120)
+            else:
+                st.empty()
     
     with projects_header_col2:
-        st.markdown("<h1 style='text-align: center; margin-top: 20px;'>📁 Projects</h1>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; margin-top: 20px;'>📁 Projects</h2>", unsafe_allow_html=True)
     
     with projects_header_col3:
-        if os.path.exists("logos/tigerlogo.jpg"):
-            st.image("logos/tigerlogo.jpg", width=100)
-        else:
-            st.empty()
+         with st.container(horizontal=True, horizontal_alignment='right',vertical_alignment='center'):
+            if os.path.exists("logos/tigerlogo.jpg"):
+                st.image("logos/tigerlogo.jpg", width=120)
+            else:
+                st.empty()
     
     st.markdown("---")  # Add separator line
 
@@ -111,7 +117,7 @@ def handle_projects(user_email):
 
         # End Date only enabled if status is Completed
         if status == "Completed":
-            end_date = st.date_input("Project Completion Date", value=date.today())
+            end_date = st.date_input("Project Completion Date", value=start_date, min_value=start_date)
             end_date = pd.to_datetime(end_date).date()
         else:
             st.text_input("Project Completion Date (set status to Completed to enable)", value="", disabled=True, key="disabled_proj_end_date")
@@ -146,8 +152,14 @@ def handle_projects(user_email):
                     "created_by": created_by
                 })
                 st.success("Project saved successfully!")
+                 # adjust this import if needed
+                df = load_tasks_from_sheets()  # get the latest tasks
+
                 st.session_state.show_create_form = False
                 st.rerun()
+
+                # st.session_state.show_create_form = False
+                # st.rerun()
         with col2:
             if st.button("🔙 Back", key="back_create_project"):
                 st.session_state.show_create_form = False
@@ -201,7 +213,16 @@ def handle_projects(user_email):
         priority = st.selectbox("Priority", priority_options, index=priority_options.index(priority_value))
         # End Date only enabled if status is Completed
         if status == "Completed":
-            end_date = st.date_input("Project Completion Date", value=pd.to_datetime(project['end_date']).date() if pd.notna(project['end_date']) else date.today())
+            # Set default end date to existing end date or start date, whichever is later
+            default_end_date = pd.to_datetime(project['end_date']).date() if pd.notna(project['end_date']) else start_date
+            if default_end_date < start_date:
+                default_end_date = start_date
+            
+            end_date = st.date_input(
+                "Project Completion Date", 
+                value=default_end_date, 
+                min_value=start_date
+            )
             end_date = pd.to_datetime(end_date).date()
         else:
             st.text_input("Project Completion Date (set status to Completed to enable)", value="", disabled=True, key="disabled_edit_proj_end_date")
