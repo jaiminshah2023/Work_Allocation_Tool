@@ -265,10 +265,7 @@ def show_dashboard():
                         st.info("No task assignment data available.")
         # --- Daily basis tasks chart ---
         st.markdown("---")
-        st.markdown(
-                "<h5 style='font-size:25px; color:#333;'>📅 Daily Basis Tasks</h5>",
-                unsafe_allow_html=True
-        )
+        st.subheader("📅 Daily Basis Tasks")
         if not df_filtered.empty and 'start_date' in df_filtered.columns:
             df_daily = df_filtered.copy()
             df_daily['start_date'] = pd.to_datetime(df_daily['start_date'], errors='coerce')
@@ -277,6 +274,7 @@ def show_dashboard():
                 daily_counts,
                 x='start_date',
                 y='Tasks',
+                title="Tasks Created Per Day",
                 text='Tasks',
                 color='Tasks',
                 color_continuous_scale='Blues'
@@ -307,6 +305,7 @@ def show_dashboard():
                     df_days_completed,
                     x='task_name',
                     y='days_taken',
+                    title="Days Taken to Complete Each Task",
                     text='days_taken',
                     color='days_taken',
                     color_continuous_scale='Viridis'

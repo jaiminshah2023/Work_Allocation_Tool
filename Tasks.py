@@ -19,7 +19,8 @@ except ImportError:
     USE_GOOGLE_SHEETS = False
     st.error("Google Sheets integration is required but not available. Please check your configuration.")
 
-# Remove local file references - all data now comes from Google Sheets 
+# Remove local file references - all data now comes from Google Sheets
+
 # === Load Tasks ===
 @st.cache_data(ttl=60)
 def load_tasks():
@@ -328,7 +329,7 @@ def handle_tasks(user_email):
                         st.rerun()
 
     with tab_dashboard:
-        st.subheader("Task Dashboard")
+        st.subheader("📊 Task Dashboard")
         
         # Show logged in user info
         user_name = get_user_name(user_email)
