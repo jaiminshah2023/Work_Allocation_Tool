@@ -38,7 +38,9 @@ if "is_logged_in" not in st.session_state:
 if "user_email" not in st.session_state:
     st.session_state["user_email"] = ""
 if "current_page" not in st.session_state:
-    st.session_state["current_page"] = "Home"
+    st.session_state["current_page"] = "Tasks"
+if "clear_task_filters" not in st.session_state:
+    st.session_state["clear_task_filters"] = True
 
 # === Email Validator ===
 def validate_email(email):
@@ -188,14 +190,20 @@ def sidebar():
     # Show data status first
     show_data_status()
 
-    if st.sidebar.button("🏠 Home"):
-        st.session_state["current_page"] = "Home"
+    # Navigation buttons
+    if st.sidebar.button("📝 Task Board", key="nav_tasks"):
+        if st.session_state.current_page != "Tasks":
+            st.session_state.clear_task_filters = True
+        st.session_state.current_page = "Tasks"
+        st.rerun()
 
-    if st.sidebar.button("📁 Projects"):
-        st.session_state["current_page"] = "Projects"
+    if st.sidebar.button("📂 Projects", key="nav_projects"):
+        st.session_state.current_page = "Projects"
+        st.rerun()
 
-    if st.sidebar.button("📝 Task Board"):
-        st.session_state["current_page"] = "Tasks"
+    if st.sidebar.button("📊 Projects Overview", key="nav_dashboard"):
+        st.session_state.current_page = "Projects Overview"
+        st.rerun()
 
     st.sidebar.markdown("---")
     
@@ -212,15 +220,17 @@ def sidebar():
             st.sidebar.error("Google Sheets integration not available")
     
     st.sidebar.markdown("---")
-    if st.sidebar.button("📄 Logout"):
+    
+    if st.sidebar.button("Logout", key="logout"):
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.success("Logged out.")
         st.rerun()
 
 # === Main Pages ===
-
-def home():
+def tasks():
+    # Get user's actual name from credentials
+    user_name = get_user_name(st.session_state['user_email'])
     
     st.markdown('') 
     st.markdown('') 
@@ -232,28 +242,22 @@ def home():
             else:
                 st.empty()
     with header_col2:
-        st.empty()
+        st.markdown(
+        f"<h2 style='text-align: center; margin-top: -20px;'>👋 Welcome, {user_name}</h2>",
+        unsafe_allow_html=True
+        )
     with header_col3:
         with st.container(horizontal=True, horizontal_alignment='right',vertical_alignment='center'):
             if os.path.exists("logos/tigerlogo.jpg"):
                 st.image("logos/tigerlogo.jpg", width=120)
             else:
-                st.empty()
-    
-    # All other page content below this block...
-    user_name = get_user_name(st.session_state['user_email'])
-    st.markdown(
-        f"<h2 style='text-align: center; margin-top: -20px;'>👋 Welcome, {user_name}</h2>",
-        unsafe_allow_html=True
-    )
+                st.empty()    
     st.markdown("---")  # Add separator line
-    show_dashboard()
+    handle_tasks(st.session_state["user_email"])
+    
 
 def show_projects():
     handle_projects(st.session_state["user_email"])
-
-def show_tasks():
-    handle_tasks(st.session_state["user_email"])
 
 # === Application Runner ===
 def main():
@@ -266,12 +270,12 @@ def main():
         st.markdown("<br>", unsafe_allow_html=True)
         page = st.session_state["current_page"]
 
-        if page == "Home":
-            home()
+        if page == "Tasks":
+            tasks()
         elif page == "Projects":
             show_projects()
-        elif page == "Tasks":
-            show_tasks()
+        elif page == "Projects Overview":
+            show_dashboard()
 
 if __name__ == "__main__":
     main()

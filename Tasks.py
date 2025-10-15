@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import os
@@ -20,6 +21,7 @@ except ImportError:
 
 # Remove local file references - all data now comes from Google Sheets 
 # === Load Tasks ===
+@st.cache_data(ttl=60)
 def load_tasks():
     if USE_GOOGLE_SHEETS:
         return load_tasks_from_sheets()
@@ -171,31 +173,16 @@ def handle_tasks(user_email):
         return
 
     # Header with logos for Tasks page
-    st.markdown('') 
-    st.markdown('') 
     tasks_header_col1, tasks_header_col2, tasks_header_col3 = st.columns([1, 3, 1],vertical_alignment='center')
-    
-    with tasks_header_col1:
-        with st.container(horizontal=True, horizontal_alignment='left',vertical_alignment='center'):  
-            if os.path.exists("logos/childlogo.jpg"):
-                st.image("logos/childlogo.jpg", width=120)
-            else:
-                st.empty()
-    
     with tasks_header_col2:
-        st.markdown("<h2 style='text-align: center; margin-top: 20px;'>📝 Task Board</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; margin-top: 0px;'>📝 Task Board</h2>", unsafe_allow_html=True)
     
-    with tasks_header_col3:
-        with st.container(horizontal=True, horizontal_alignment='right',vertical_alignment='center'):
-            if os.path.exists("logos/tigerlogo.jpg"):
-                st.image("logos/tigerlogo.jpg", width=120)
-            else:
-                st.empty()
     
     st.markdown("---")  # Add separator line
     
     df = load_tasks()
-    df["assigned_to"] = df["assigned_to"].astype(str).str.strip().str.lower()
+    df["assigned_to"] = df["assigned_to"].astype(str).fillna("").apply(lambda s: ", ".join([x.strip().lower() for x in str(s).split(',') if x and x.strip()]))
+    df["assigned_to_list"] = df["assigned_to"].apply(lambda s: [x.strip().lower() for x in s.split(',') if x.strip()])
     user_email = user_email.strip().lower()
     page = st.session_state.get("task_page", "Tasks")
 
@@ -346,9 +333,8 @@ def handle_tasks(user_email):
         # Show logged in user info
         user_name = get_user_name(user_email)
         st.info(f"👤 **Logged in as:** {user_name}")
-        
-        # Add filters for dashboard
-        st.markdown("### 📶 Dashboard Filters")
+
+        main_col, right_col = st.columns([3, 1])
         
         # Create filter columns
         all_projects = []
@@ -361,31 +347,25 @@ def handle_tasks(user_email):
         all_projects = sorted(all_projects)
         
         # Create filter columns
-        filter_col1, filter_col2 = st.columns(2)
-        filter_col3, filter_col4 = st.columns(2)
         
-        with filter_col1:
+        
+        with right_col:
+            st.markdown("### 📊 Dashboard Filters")
             filter_project = st.multiselect(
                 "Filter by Project",
                 options=all_projects,
-                default=all_projects
+                default=[] 
             )
-        
-        with filter_col2:
             filter_status = st.multiselect(
                 "Filter by Status", 
                 options=df['status'].unique().tolist() if not df.empty else [],
-                default=df['status'].unique().tolist() if not df.empty else []
+                default=[]  
             )
-        
-        with filter_col3:
             filter_priority = st.multiselect(
                 "Filter by Priority", 
                 options=df['priority'].unique().tolist() if not df.empty and 'priority' in df.columns else [],
-                default=df['priority'].unique().tolist() if not df.empty and 'priority' in df.columns else []
+                default=[]  
             )
-        
-        with filter_col4:
             # Build list of unique individual assignees from assigned_to_list
             unique_assignees = []
             if not df.empty:
@@ -393,223 +373,236 @@ def handle_tasks(user_email):
             filter_assignee = st.multiselect(
                 "Filter by Assignee",
                 options=unique_assignees,
-                default=unique_assignees
-            )
-        
-        # Apply filters
-        df_filtered = df.copy()
-        if not df_filtered.empty:
-            if filter_project:
-                df_filtered = df_filtered[df_filtered['project_name'].isin(filter_project)]
-            if filter_status:
-                df_filtered = df_filtered[df_filtered['status'].isin(filter_status)]
-            if filter_priority and 'priority' in df_filtered.columns:
-                df_filtered = df_filtered[df_filtered['priority'].isin(filter_priority)]
-            if filter_assignee:
-                df_filtered = df_filtered[df_filtered['assigned_to_list'].apply(lambda lst: any(a in lst for a in filter_assignee))]
-        
-        # Calculate summary statistics with filtered data
-        total_tasks = len(df_filtered) if not df_filtered.empty else 0
-        completed_tasks = len(df_filtered[df_filtered['status'] == 'Completed']) if not df_filtered.empty else 0
-        incomplete_tasks = len(df_filtered[df_filtered['status'] != 'Completed']) if not df_filtered.empty else 0
-        
-        # Calculate overdue tasks (tasks with due_date in the past and status != 'Completed')
-        current_date = pd.Timestamp.now().date()
-        overdue_tasks = 0
-        if not df_filtered.empty and 'due_date' in df_filtered.columns:
-            df_copy = df_filtered.copy()
-            df_copy['due_date'] = pd.to_datetime(df_copy['due_date'], errors='coerce')
-            overdue_mask = (
-                (df_copy['due_date'].dt.date < current_date) & 
-                (df_copy['status'] != 'Completed') &
-                (df_copy['due_date'].notna())
-            )
-            overdue_tasks = len(df_copy[overdue_mask])
-        
-        # Display statistics in 4 columns
-        st.markdown("---")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            with st.container(border=True):
-                st.metric(
-                label="Total completed tasks",
-                value=str(completed_tasks)
-                )
-        
-        with col2:
-            with st.container(border=True):
-                  st.metric(
-                label="Total incomplete tasks", 
-                value=str(incomplete_tasks)
-                 )
-        
-        with col3:
-            with st.container(border=True):
-                st.metric(
-                label="Total overdue tasks",
-                value=str(overdue_tasks)
-                )
-        
-        with col4:
-            with st.container(border=True):
-                 st.metric(
-                label="Total tasks",
-                value=str(total_tasks)
-                )
-        
-        # Add some spacing
-        st.markdown("---")
-        
-        if not df_filtered.empty:
-            # Create charts in two rows
+                default=[]  
+    )   
+        with main_col:
+            # Apply filters
+            df_filtered = df.copy()
+            if not df_filtered.empty:
+                if filter_project:
+                    df_filtered = df_filtered[df_filtered['project_name'].isin(filter_project)]
+                if filter_status:
+                    df_filtered = df_filtered[df_filtered['status'].isin(filter_status)]
+                if filter_priority and 'priority' in df_filtered.columns:
+                    df_filtered = df_filtered[df_filtered['priority'].isin(filter_priority)]
+                if filter_assignee:
+                    df_filtered = df_filtered[df_filtered['assigned_to'].isin(filter_assignee)]
             
-            # Row 1: Bar Chart and Project Distribution
-            col1, col2 = st.columns(2)
+            # Calculate summary statistics with filtered data
+            total_tasks = len(df_filtered) if not df_filtered.empty else 0
+            completed_tasks = len(df_filtered[df_filtered['status'] == 'Completed']) if not df_filtered.empty else 0
+            incomplete_tasks = len(df_filtered[df_filtered['status'] != 'Completed']) if not df_filtered.empty else 0
+            
+            # Calculate overdue tasks (tasks with due_date in the past and status != 'Completed')
+            current_date = pd.Timestamp.now().date()
+            overdue_tasks = 0
+            if not df_filtered.empty and 'due_date' in df_filtered.columns:
+                df_copy = df_filtered.copy()
+                df_copy['due_date'] = pd.to_datetime(df_copy['due_date'], errors='coerce')
+                overdue_mask = (
+                    (df_copy['due_date'].dt.date < current_date) & 
+                    (df_copy['status'] != 'Completed') &
+                    (df_copy['due_date'].notna())
+                )
+                overdue_tasks = len(df_copy[overdue_mask])
+            
+            # Display statistics in 4 columns
+            st.markdown("---")
+            col1, col2, col3, col4 = st.columns(4)
             
             with col1:
-                with st.container(border=True):
-                    st.markdown(
-                "<h5 style='font-size:25px; color:#333;'>📊 Total Tasks by Status</h5>",
-                unsafe_allow_html=True
-                )   
-                    # Bar chart for tasks by status
-                    status_counts = df_filtered['status'].value_counts().reset_index()
-                    status_counts.columns = ['Status', 'Task Count']
-                    
-                    fig_bar = px.bar(
-                        status_counts, 
-                        x='Status', 
-                        y='Task Count',
-                        color='Status',
-                        text='Task Count',
-                        color_discrete_sequence=px.colors.qualitative.Set3
-                    )
-                    fig_bar.update_traces(texttemplate='%{text}', textposition='outside')
-                    fig_bar.update_layout(showlegend=False, height=400)
-                    st.plotly_chart(fig_bar, use_container_width=True)
-                    
+                with st.container(border=True):    
+                        st.metric(
+                            label="Total completed tasks",
+                            value=str(completed_tasks)
+                        )
+            
             with col2:
                 with st.container(border=True):
-                    st.markdown(
-                "<h5 style='font-size:25px; color:#333;'>📁 Total Tasks by Project</h5>",
-                unsafe_allow_html=True
-                )
-                    # Bar chart for tasks by project
-                    project_counts = df_filtered['project_name'].value_counts().reset_index()
-                    project_counts.columns = ['Project', 'Task Count']
-                    
-                    fig_project = px.bar(
-                        project_counts, 
-                        x='Project', 
-                        y='Task Count',
-                        color='Project',
-                        text='Task Count',
-                        color_discrete_sequence=px.colors.qualitative.Pastel
+                    st.metric(
+                        label="Total incomplete tasks", 
+                        value=str(incomplete_tasks)
                     )
-                    fig_project.update_traces(texttemplate='%{text}', textposition='outside')
-                    fig_project.update_layout(
-                        showlegend=False, 
-                        height=400,
-                        xaxis_tickangle=-45
-                    )
-                    st.plotly_chart(fig_project, use_container_width=True)
-                
-                # Row 2: Timeline and Pie Chart
-            col3, col4 = st.columns(2)
                 
             with col3:
                 with st.container(border=True):
-                    st.markdown(
-                "<h5 style='font-size:25px; color:#333;'>📈 Task Completion Over Time</h5>",
-                unsafe_allow_html=True
-                )
-                    # Prepare data for completion timeline
-                    df_timeline = df_filtered.copy()
-                    if 'completion_date' in df_timeline.columns:
-                        df_timeline['completion_date'] = pd.to_datetime(df_timeline['completion_date'], errors='coerce')
-                        completed_over_time = df_timeline[df_timeline['status'] == 'Completed'].copy()
-                        
-                        if not completed_over_time.empty:
-                            # Group by completion date
-                            completed_over_time['completion_date'] = completed_over_time['completion_date'].dt.date
-                            timeline_data = completed_over_time.groupby('completion_date').size().reset_index()
-                            timeline_data.columns = ['Date', 'Tasks Completed']
-                            
-                            # Create cumulative sum
-                            timeline_data = timeline_data.sort_values('Date')
-                            timeline_data['Cumulative Tasks'] = timeline_data['Tasks Completed'].cumsum()
-                            
-                            fig_timeline = px.line(
-                                timeline_data, 
-                                x='Date', 
-                                y='Cumulative Tasks',
-                                markers=True,
-                                color_discrete_sequence=['#1f77b4']
-                            )
-                            fig_timeline.update_layout(
-                                height=400,
-                                xaxis=dict(
-                                    type='date',
-                                    tickformat='%Y-%m-%d'
-                                )
-                            )
-                            st.plotly_chart(fig_timeline, use_container_width=True)
-                        else:
-                            st.info("No completed tasks with completion dates found.")
-                    else:
-                        st.info("No completion date data available.")
+                    st.metric(
+                        label="Total overdue tasks",
+                        value=str(overdue_tasks)
+                    )
             
             with col4:
                 with st.container(border=True):
-                   
-                    st.markdown(
-                "<h5 style='font-size:25px; color:#333;'>📝 Task Completion Status-This Month</h5>",
+                    st.metric(
+                        label="Total tasks",
+                        value=str(total_tasks)
+                    )
+                
+            # Add some spacing
+            st.markdown("---")
+            
+            if not df_filtered.empty:
+                # Create charts in two rows
+                
+                # Row 1: Bar Chart and Project Distribution
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    with st.container(border=True):
+                        st.markdown(
+                "<h5 style='font-size:25px; color:#333;'>📊 Total Tasks by Status</h5>",
                 unsafe_allow_html=True
-                     )
-                    # Pie chart for this month's completion status
-                    current_month_start = pd.Timestamp(datetime.now().replace(day=1))
-                    current_month_end = pd.Timestamp((datetime.now().replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1))
-
-                    # Filter tasks for current month (by due date or completion date)
-                    df_month = df_filtered.copy()
-                    df_month['due_date'] = pd.to_datetime(df_month['due_date'], errors='coerce')
-                    df_month['completion_date'] = pd.to_datetime(df_month['completion_date'], errors='coerce')
-
-                    # Tasks due this month or completed this month
-                    this_month_tasks = df_month[
-                        ((df_month['due_date'] >= current_month_start) & 
-                        (df_month['due_date'] <= current_month_end)) |
-                        ((df_month['completion_date'] >= current_month_start) & 
-                        (df_month['completion_date'] <= current_month_end))
-                    ]
-                    
-                    if not this_month_tasks.empty:
-                        month_status_counts = this_month_tasks['status'].value_counts().reset_index()
-                        month_status_counts.columns = ['Status', 'Count']
-                        
-                        fig_pie = px.pie(
-                            month_status_counts, 
-                            values='Count', 
-                            names='Status',
-                            color_discrete_sequence=px.colors.qualitative.Set2
                         )
-                        fig_pie.update_layout(height=400)
-                        st.plotly_chart(fig_pie, use_container_width=True)
-                    else:
-                        st.info("No tasks found for this month.")
-        
-        else:
-            st.info("No tasks match the current filters. Please adjust your filter selections.")
-            st.markdown("### 🔍 Current Filters:")
-            st.write(f"- **Projects:** {filter_project if filter_project else 'All'}")
-            st.write(f"- **Status:** {filter_status if filter_status else 'All'}")
-            st.write(f"- **Priority:** {filter_priority if filter_priority else 'All'}")
-            st.write(f"- **Assignees:** {filter_assignee if filter_assignee else 'All'}")
+                        # Bar chart for tasks by status
+                        status_counts = df_filtered['status'].value_counts().reset_index()
+                        status_counts.columns = ['Status', 'Task Count']
+                        
+                        fig_bar = px.bar(
+                            status_counts, 
+                            x='Status', 
+                            y='Task Count',
+                            color='Status',
+                            text='Task Count',
+                            color_discrete_sequence=px.colors.qualitative.Set3
+                        )
+                        fig_bar.update_traces(texttemplate='%{text}', textposition='outside')
+                        fig_bar.update_layout(showlegend=False, height=400)
+                        st.plotly_chart(fig_bar, use_container_width=True)
+                    
+                with col2:
+                    with st.container(border=True):
+                        st.markdown(
+                "<h5 style='font-size:25px; color:#333;'>📁 Total Tasks by Project</h5>",
+                unsafe_allow_html=True
+                        )
+                        # Bar chart for tasks by project
+                        project_counts = df_filtered['project_name'].value_counts().reset_index()
+                        project_counts.columns = ['Project', 'Task Count']
+                        
+                        fig_project = px.bar(
+                            project_counts, 
+                            x='Project', 
+                            y='Task Count',
+                            color='Project',
+                            text='Task Count',
+                            color_discrete_sequence=px.colors.qualitative.Pastel
+                        )
+                        fig_project.update_traces(texttemplate='%{text}', textposition='outside')
+                        fig_project.update_layout(
+                            showlegend=False, 
+                            height=400,
+                            xaxis_tickangle=-45
+                        )
+                        st.plotly_chart(fig_project, use_container_width=True)
+                    
+                # Row 2: Timeline and Pie Chart
+                col3, col4 = st.columns(2)
+                
+                with col3:
+                    with st.container(border=True):
+                        st.markdown(
+                "<h5 style='font-size:25px; color:#333;'>📈 Task Completion Over Time</h5>",
+                unsafe_allow_html=True
+                        )
+                        # Prepare data for completion timeline
+                        df_timeline = df_filtered.copy()
+                        if 'completion_date' in df_timeline.columns:
+                            df_timeline['completion_date'] = pd.to_datetime(df_timeline['completion_date'], errors='coerce')
+                            completed_over_time = df_timeline[df_timeline['status'] == 'Completed'].copy()
+                            
+                            if not completed_over_time.empty:
+                                # Group by completion date
+                                completed_over_time['completion_date'] = completed_over_time['completion_date'].dt.date
+                                timeline_data = completed_over_time.groupby('completion_date').size().reset_index()
+                                timeline_data.columns = ['Date', 'Tasks Completed']
+                                
+                                # Create cumulative sum
+                                timeline_data = timeline_data.sort_values('Date')
+                                timeline_data['Cumulative Tasks'] = timeline_data['Tasks Completed'].cumsum()
+                                
+                                fig_timeline = px.line(
+                                    timeline_data, 
+                                    x='Date', 
+                                    y='Cumulative Tasks',
+                                    markers=True,
+                                    color_discrete_sequence=['#1f77b4']
+                                )
+                                fig_timeline.update_layout(
+                                    height=400,
+                                    xaxis=dict(
+                                        type='date',
+                                        tickformat='%Y-%m-%d'
+                                    )
+                                )
+                                st.plotly_chart(fig_timeline, use_container_width=True)
+                            else:
+                                st.info("No completed tasks with completion dates found.")
+                        else:
+                            st.info("No completion date data available.")
+                    
+                with col4:
+                    with st.container(border=True):
+                        st.markdown(
+                "<h5 style='font-size:25px; color:#333;'>📝 Task Completion Status This Month</h5>",
+                unsafe_allow_html=True
+                        )
+                       
+                        # Pie chart for this month's completion status
+                        current_month_start = pd.Timestamp(datetime.now().replace(day=1))
+                        current_month_end = pd.Timestamp((datetime.now().replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1))
+
+                        # Filter tasks for current month (by due date or completion date)
+                        df_month = df_filtered.copy()
+                        df_month['due_date'] = pd.to_datetime(df_month['due_date'], errors='coerce')
+                        df_month['completion_date'] = pd.to_datetime(df_month['completion_date'], errors='coerce')
+
+                        # Tasks due this month or completed this month
+                        this_month_tasks = df_month[
+                            ((df_month['due_date'] >= current_month_start) & 
+                            (df_month['due_date'] <= current_month_end)) |
+                            ((df_month['completion_date'] >= current_month_start) & 
+                            (df_month['completion_date'] <= current_month_end))
+                        ]
+                        
+                        if not this_month_tasks.empty:
+                            month_status_counts = this_month_tasks['status'].value_counts().reset_index()
+                            month_status_counts.columns = ['Status', 'Count']
+                            
+                            fig_pie = px.pie(
+                                month_status_counts, 
+                                values='Count', 
+                                names='Status',
+                                color_discrete_sequence=px.colors.qualitative.Set2
+                            )
+                            fig_pie.update_layout(height=400)
+                            st.plotly_chart(fig_pie, use_container_width=True)
+                        else:
+                            st.info("No tasks found for this month.")
+                
+            else:
+                st.info("No tasks match the current filters. Please adjust your filter selections.")
+                st.markdown("### 🔍 Current Filters:")
+                st.write(f"- **Projects:** {filter_project if filter_project else 'All'}")
+                st.write(f"- **Status:** {filter_status if filter_status else 'All'}")
+                st.write(f"- **Priority:** {filter_priority if filter_priority else 'All'}")
+                st.write(f"- **Assignees:** {filter_assignee if filter_assignee else 'All'}")
 
     with tab_all:
         st.subheader("📋 All Tasks")
+        if st.button("Clear All Filters", key="clear_all_filters_btn"):
+            st.session_state.all_tasks_project_filter = []
+            st.session_state.all_tasks_status_filter = []
+            st.session_state.all_tasks_priority_filter = []
+            st.session_state.all_tasks_assignee_filter = []
+            st.rerun()
+
+        # --- Logic to clear filters on page load ---
+        if st.session_state.get("clear_task_filters", False):
+            st.session_state.all_tasks_project_filter = []
+            st.session_state.all_tasks_status_filter = []
+            st.session_state.all_tasks_priority_filter = []
+            st.session_state.all_tasks_assignee_filter = []
+            st.session_state.clear_task_filters = False
         # Show filters horizontally at the top, matching Dashboard style
         all_projects = []
         try:
@@ -626,21 +619,18 @@ def handle_tasks(user_email):
             selected_project = st.multiselect(
                 "Filter by Project",
                 options=all_projects,
-                default=all_projects,
                 key="all_tasks_project_filter"
             )
         with filter_col2:
             selected_status = st.multiselect(
                 "Filter by Status",
                 options=sorted(df['status'].dropna().unique().tolist()),
-                default=sorted(df['status'].dropna().unique().tolist()),
                 key="all_tasks_status_filter"
             )
         with filter_col3:
             selected_priority = st.multiselect(
                 "Filter by Priority",
                 options=sorted(df['priority'].dropna().unique().tolist()) if 'priority' in df.columns else [],
-                default=sorted(df['priority'].dropna().unique().tolist()) if 'priority' in df.columns else [],
                 key="all_tasks_priority_filter"
             )
         with filter_col4:
@@ -650,9 +640,9 @@ def handle_tasks(user_email):
             selected_assignee = st.multiselect(
                 "Filter by Assignee",
                 options=unique_assignees_all,
-                default=unique_assignees_all,
                 key="all_tasks_assignee_filter"
             )
+        st.markdown("---")
 
         # Apply filters to All Tasks table
         filtered_df = df.copy()
@@ -694,73 +684,50 @@ def handle_tasks(user_email):
                 if col in display_df.columns:
                     display_df[col] = display_df[col].apply(lambda x: x.strftime("%Y-%m-%d") if pd.notna(x) and x != "" else "")
             st.dataframe(display_df, use_container_width=True)
+            with tab_my:
+                st.subheader("👤 My Tasks")
+                st.write("Logged in as:", user_email)
+                my_tasks = df[df['assigned_to'] == user_email]
 
+                # Show Create New Task button below filters for authorized users
+                authorized_users = load_users()
+                if user_email in authorized_users:
+                    if st.button("+ Create New Task", key="create_new_task_btn"):
+                        st.session_state.task_page = "NewTask"
+                        st.rerun()
+                else:
+                    st.button("+ Create New Task", key="unauthorized_create_task_btn", disabled=True)
 
-    with tab_my:
-        st.subheader("👤 My Tasks")
-        st.write("Logged in as:", user_email)
-        # My tasks: include rows where the logged-in user is in the assigned_to_list
-        my_tasks = df[df['assigned_to_list'].apply(lambda lst: user_email in lst)].copy()
+                if my_tasks.empty:
+                    st.info("You have no assigned tasks.")
+                else:
+                    st.markdown("### Your Assigned Tasks")
+                    for idx, row in my_tasks.iterrows():
+                        # Display each task in a single-row table
+                        task_display = pd.DataFrame([{
+                            "Task Name": row.get("task_name", ""),
+                            "Description": row.get("description", ""),
+                            "Project": row.get("project_name", ""),
+                            "Assign Date": row.get("start_date", ""),
+                            "Due Date": row.get("due_date", ""),
+                            "Priority": row.get("priority", ""),
+                            "Status": row.get("status", ""),
+                            "Completion Date": row.get("completion_date", "")
+                        }])
+                        # Format all date columns to string YYYY-MM-DD
+                        for col in ["Assign Date", "Due Date", "Completion Date"]:
+                            if col in task_display.columns:
+                                task_display[col] = task_display[col].apply(lambda x: x.strftime("%Y-%m-%d") if pd.notna(x) and x != "" else "")
+                        cols = st.columns([10, 1])
+                        with cols[0]:
+                            st.dataframe(task_display, use_container_width=True, hide_index=True)
+                        with cols[1]:
+                            if st.button("Edit", key=f"edit_my_task_{idx}"):
+                                st.session_state.edit_task_idx = idx
+                                st.session_state.show_edit_dialog = True
+                                st.session_state.active_tab = "my"
 
-        # Add Create New Task button for all users in My Tasks tab
-        if st.button("+ Create New Task", key="create_new_task_btn_my_tasks"):
-            st.session_state.task_page = "NewTask"
-            st.rerun()
-
-        if my_tasks.empty:
-            st.info("You have no assigned tasks.")
-        else:
-            st.markdown(
-                "<h3 style='font-size:25px; color:#333;'>Your Assigned Tasks</h3>",
-                unsafe_allow_html=True
-                )
-            # st.markdown("### Your Assigned Tasks")
-            for idx, row in my_tasks.iterrows():
-                # Display each task in a single-row table
-                task_display = pd.DataFrame([{
-                    "Task Name": row.get("task_name", ""),
-                    "Description": row.get("description", ""),
-                    "Project": row.get("project_name", ""),
-                    "Assign Date": row.get("start_date", ""),
-                    "Due Date": row.get("due_date", ""),
-                    "Priority": row.get("priority", ""),
-                    "Status": row.get("status", ""),
-                    "Completion Date": row.get("completion_date", "")
-                }])
-                # Format all date columns to string YYYY-MM-DD
-                for col in ["Assign Date", "Due Date", "Completion Date"]:
-                    if col in task_display.columns:
-                        task_display[col] = task_display[col].apply(lambda x: x.strftime("%Y-%m-%d") if pd.notna(x) and x != "" else "")
-                cols = st.columns([10, 1])
-                with cols[0]:
-                    st.dataframe(task_display, use_container_width=True, hide_index=True)
-                with cols[1]:
-                    if st.button("Edit", key=f"edit_my_task_{idx}"):
-                        st.session_state.edit_task_idx = idx
-                        st.session_state.show_edit_dialog = True
-                        st.session_state.active_tab = "my"
-
-            display_df = my_tasks.rename(columns={
-                "task_name": "Task Name",
-                "description": "Description",
-                "project_name": "Project",
-                "assigned_to": "Assignee",
-                "priority": "Priority",
-                "status": "Status",
-                "start_date": "Start Date",
-                "due_date": "Due Date",
-                "completion_date": "Completion Date",
-                "comments": "Comments",
-                "created_by": "Created By"
-            })[["Task Name", "Description", "Project", "Assignee", "Start Date", "Due Date", "Priority", "Status", "Completion Date"]]
-
-            # Format date columns
-            for col in ["Start Date", "Due Date", "Completion Date"]:
-                if col in display_df.columns:
-                    display_df[col] = display_df[col].apply(lambda x: x.strftime("%Y-%m-%d") if pd.notna(x) and x != "" else "")
-
-            st.dataframe(display_df, use_container_width=True)
-
+            
             # Selection control to edit a specific task
             selection_options = [f"{idx} | {row['task_name']}" for idx, row in my_tasks.iterrows()]
             selected = st.selectbox("Select a task to edit", options=["" ] + selection_options, key="my_tasks_select")
