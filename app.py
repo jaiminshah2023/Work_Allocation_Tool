@@ -39,6 +39,8 @@ if "user_email" not in st.session_state:
     st.session_state["user_email"] = ""
 if "current_page" not in st.session_state:
     st.session_state["current_page"] = "Tasks"
+if "clear_task_filters" not in st.session_state:
+    st.session_state["clear_task_filters"] = True
 
 # === Email Validator ===
 def validate_email(email):
@@ -188,14 +190,20 @@ def sidebar():
     # Show data status first
     show_data_status()
 
-    if st.sidebar.button("📝 Tasks"):
-        st.session_state["current_page"] = "Tasks"
+    # Navigation buttons
+    if st.sidebar.button("📝 Task Board", key="nav_tasks"):
+        if st.session_state.current_page != "Tasks":
+            st.session_state.clear_task_filters = True
+        st.session_state.current_page = "Tasks"
+        st.rerun()
 
-    if st.sidebar.button("📁 Projects"):
-        st.session_state["current_page"] = "Projects"
+    if st.sidebar.button("📂 Projects", key="nav_projects"):
+        st.session_state.current_page = "Projects"
+        st.rerun()
 
-    if st.sidebar.button("📊 Projects Overview"):
-        st.session_state["current_page"] = "Projects Overview"
+    if st.sidebar.button("📊 Projects Overview", key="nav_dashboard"):
+        st.session_state.current_page = "Projects Overview"
+        st.rerun()
 
     st.sidebar.markdown("---")
     
@@ -212,7 +220,8 @@ def sidebar():
             st.sidebar.error("Google Sheets integration not available")
     
     st.sidebar.markdown("---")
-    if st.sidebar.button("📄 Logout"):
+    
+    if st.sidebar.button("Logout", key="logout"):
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.success("Logged out.")
