@@ -233,8 +233,8 @@ def show_dashboard():
                         st.info("No incomplete tasks found.")
                 
             # Row 2: Only show Tasks by Assignee and Status (remove Completion Timeline)
-            col3, _ = st.columns(2)
-            with col3:
+            col1,col2,col3, = st.columns([1, 3, 1])
+            with col2:
                 with st.container(border=True):
                     st.markdown(
                     "<h5 style='font-size:25px; color:#333;'>👥 Total Tasks by Assignee and Task Status</h5>",
