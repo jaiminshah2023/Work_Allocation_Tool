@@ -619,21 +619,18 @@ def handle_tasks(user_email):
             selected_project = st.multiselect(
                 "Filter by Project",
                 options=all_projects,
-                default=all_projects,
                 key="all_tasks_project_filter"
             )
         with filter_col2:
             selected_status = st.multiselect(
                 "Filter by Status",
                 options=sorted(df['status'].dropna().unique().tolist()),
-                default=sorted(df['status'].dropna().unique().tolist()),
                 key="all_tasks_status_filter"
             )
         with filter_col3:
             selected_priority = st.multiselect(
                 "Filter by Priority",
                 options=sorted(df['priority'].dropna().unique().tolist()) if 'priority' in df.columns else [],
-                default=sorted(df['priority'].dropna().unique().tolist()) if 'priority' in df.columns else [],
                 key="all_tasks_priority_filter"
             )
         with filter_col4:
@@ -643,7 +640,6 @@ def handle_tasks(user_email):
             selected_assignee = st.multiselect(
                 "Filter by Assignee",
                 options=unique_assignees_all,
-                default=unique_assignees_all,
                 key="all_tasks_assignee_filter"
             )
         st.markdown("---")
