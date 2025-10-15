@@ -242,20 +242,16 @@ def tasks():
             else:
                 st.empty()
     with header_col2:
-        st.empty()
+        st.markdown(
+        f"<h2 style='text-align: center; margin-top: -20px;'>👋 Welcome, {user_name}</h2>",
+        unsafe_allow_html=True
+        )
     with header_col3:
         with st.container(horizontal=True, horizontal_alignment='right',vertical_alignment='center'):
             if os.path.exists("logos/tigerlogo.jpg"):
                 st.image("logos/tigerlogo.jpg", width=120)
             else:
-                st.empty()
-    
-    # All other page content below this block...
-    user_name = get_user_name(st.session_state['user_email'])
-    st.markdown(
-        f"<h2 style='text-align: center; margin-top: -20px;'>👋 Welcome, {user_name}</h2>",
-        unsafe_allow_html=True
-    )
+                st.empty()    
     st.markdown("---")  # Add separator line
     handle_tasks(st.session_state["user_email"])
     
