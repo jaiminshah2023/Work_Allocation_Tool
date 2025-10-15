@@ -359,12 +359,12 @@ def handle_tasks(user_email):
             filter_status = st.multiselect(
                 "Filter by Status", 
                 options=df['status'].unique().tolist() if not df.empty else [],
-                default=[]  # <-- Change here
+                default=[]  
             )
             filter_priority = st.multiselect(
                 "Filter by Priority", 
                 options=df['priority'].unique().tolist() if not df.empty and 'priority' in df.columns else [],
-                default=[]  # <-- Change here
+                default=[]  
             )
             # Build list of unique individual assignees from assigned_to_list
             unique_assignees = []
@@ -373,10 +373,8 @@ def handle_tasks(user_email):
             filter_assignee = st.multiselect(
                 "Filter by Assignee",
                 options=unique_assignees,
-                default=[]  # <-- Change here
-    )
-# ...existing code...
-        
+                default=[]  
+    )   
         with main_col:
             # Apply filters
             df_filtered = df.copy()
