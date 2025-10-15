@@ -67,22 +67,22 @@ def show_dashboard():
         filter_project = st.multiselect(
             "Filter by Project",
             options=all_projects,
-            default=[]  # <-- Change here
+            default=[]  
         )
         filter_status = st.multiselect(
             "Filter by Status", 
             options=df['status'].unique().tolist() if not df.empty else [],
-            default=[]  # <-- Change here
+            default=[]  
         )
         filter_priority = st.multiselect(
             "Filter by Priority", 
             options=df['priority'].unique().tolist() if not df.empty and 'priority' in df.columns else [],
-            default=[]  # <-- Change here
+            default=[]  
         )
         filter_assignee = st.multiselect(
             "Filter by Assignee",
             options=df['assigned_to'].unique().tolist() if not df.empty else [],
-            default=[]  # <-- Change here
+            default=[] 
         )
     
     # Apply filters
@@ -319,10 +319,3 @@ def show_dashboard():
         else:
             st.info("Insufficient data for days taken to complete each task chart.")
     
-    # else:
-    #     st.info("No tasks match the current filters. Please adjust your filter selections.")
-    #     st.markdown("### 🔍 Current Filters:")
-    #     st.write(f"- **Projects:** {filter_project if filter_project else 'All'}")
-    #     st.write(f"- **Status:** {filter_status if filter_status else 'All'}")
-    #     st.write(f"- **Priority:** {filter_priority if filter_priority else 'All'}")
-    #     st.write(f"- **Assignees:** {filter_assignee if filter_assignee else 'All'}")
