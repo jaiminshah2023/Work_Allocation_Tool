@@ -354,7 +354,7 @@ def handle_tasks(user_email):
             filter_project = st.multiselect(
                 "Filter by Project",
                 options=all_projects,
-                default=[]  # <-- Change here
+                default=[] 
             )
             filter_status = st.multiselect(
                 "Filter by Status", 
