@@ -63,7 +63,7 @@ def handle_projects(user_email):
         return
 
     # Header with logos for Projects page
-    projects_header_col1, projects_header_col2, projects_header_col3 = st.columns([1, 3, 1])
+    projects_header_col1, projects_header_col2, projects_header_col3 = st.columns([1, 6, 1])
     
     with projects_header_col1:
         if os.path.exists("logos/childlogo.jpg"):
@@ -72,7 +72,24 @@ def handle_projects(user_email):
             st.empty()
     
     with projects_header_col2:
-        st.markdown("<h1 style='text-align: center; margin-top: 20px;'>📁 Projects</h1>", unsafe_allow_html=True)
+        st.markdown(
+        """
+        <h1 style='
+            text-align: center;
+            margin-top: -30px;
+            margin-bottom: 0px;
+            margin-left:40px;
+            color: #111111; /* Enhanced dark black */
+            font-size: 44px; /* Larger font */
+            font-weight: 700; /* Bolder */
+            letter-spacing: 1px;
+            font-family: "Segoe UI", Arial, sans-serif;
+            text-shadow: 1px 1px 2px #88888822;
+        '>Task Pilot</h1>
+        """,
+        unsafe_allow_html=True
+        )
+        st.markdown("<h2 style='text-align: center; font-size:31px;margin-top: 0px;;margin-left: 30px;'>📁 Projects</h2>", unsafe_allow_html=True)  
     
     with projects_header_col3:
         if os.path.exists("logos/tigerlogo.jpg"):

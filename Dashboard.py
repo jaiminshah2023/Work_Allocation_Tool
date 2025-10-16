@@ -39,11 +39,39 @@ def load_tasks():
 
 # === Show Dashboard ===
 def show_dashboard():
-   
-    st.markdown(
-    "<h2 style='text-align: center; margin-top: 20px;'>📊 Dashboard</h2>",
-    unsafe_allow_html=True
-    )  
+    projects_header_col1, projects_header_col2, projects_header_col3 = st.columns([1, 6, 1])
+    
+    with projects_header_col1:
+        if os.path.exists("logos/childlogo.jpg"):
+            st.image("logos/childlogo.jpg", width=100)
+        else:
+            st.empty()
+    
+    with projects_header_col2:
+        st.markdown(
+        """
+        <h1 style='
+            text-align: center;
+            margin-top: -30px;
+            margin-bottom: 0px;
+            margin-left:30px;
+            color: #111111; /* Enhanced dark black */
+            font-size: 44px; /* Larger font */
+            font-weight: 700; /* Bolder */
+            letter-spacing: 1px;
+            font-family: "Segoe UI", Arial, sans-serif;
+            text-shadow: 1px 1px 2px #88888822;
+        '>Task Pilot</h1>
+        """,
+        unsafe_allow_html=True
+        )
+        st.markdown("<h3 style='text-align: center;font-size:31px; margin-top: 0px;margin-left: 20px;'>📊 Dashboard</h3>", unsafe_allow_html=True)
+    
+    with projects_header_col3:
+        if os.path.exists("logos/tigerlogo.jpg"):
+            st.image("logos/tigerlogo.jpg", width=100)
+        else:
+            st.empty()
     st.markdown("---")
     # Load data
     df = load_tasks()
@@ -63,7 +91,7 @@ def show_dashboard():
     main_col, right_col = st.columns([3, 1])
     
     with right_col:
-        st.markdown("### 📊 Dashboard Filters")
+        st.markdown("<h3>📊 Dashboard Filters</h3>", unsafe_allow_html=True)
         filter_project = st.multiselect(
             "Filter by Project",
             options=all_projects,
@@ -169,7 +197,7 @@ def show_dashboard():
             with col1:
                 with st.container(border=True):
                     st.markdown(
-                    "<h5 style='font-size:25px; color:#333;'>📊 Projects by Project Status</h5>",
+                    "<h6 style='font-size:25px; color:#333;'>📊 Projects by Project Status</h6>",
                     unsafe_allow_html=True
                     )
                     # Doughnut chart for projects by status
@@ -205,7 +233,7 @@ def show_dashboard():
             with col2:
                 with st.container(border=True):
                     st.markdown(
-                    "<h5 style='font-size:25px; color:#333;'>📈 Incomplete Tasks by Project</h5>",
+                    "<h6 style='font-size:25px; color:#333;'>📈 Incomplete Tasks by Project</h6>",
                     unsafe_allow_html=True
                     )
                     # Bar chart for incomplete tasks by project
@@ -237,7 +265,7 @@ def show_dashboard():
             with col2:
                 with st.container(border=True):
                     st.markdown(
-                    "<h5 style='font-size:25px; color:#333;'>👥 Total Tasks by Assignee and Task Status</h5>",
+                    "<h6 style='font-size:25px; color:#333;'>👥 Total Tasks by Assignee and Task Status</h6>",
                     unsafe_allow_html=True
                     )
                     
@@ -288,7 +316,7 @@ def show_dashboard():
         # --- Days taken to complete each task chart ---
         st.markdown("---")
         st.markdown(
-                "<h5 style='font-size:25px; color:#333;'>⏳ Days Taken to Complete Each Task</h5>",
+                "<h6 style='font-size:25px; color:#333;'>⏳ Days Taken to Complete Each Task</h6>",
                 unsafe_allow_html=True
         )
         

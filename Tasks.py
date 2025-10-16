@@ -176,7 +176,7 @@ def handle_tasks(user_email):
     # Header with logos for Tasks page
     tasks_header_col1, tasks_header_col2, tasks_header_col3 = st.columns([1, 3, 1],vertical_alignment='center')
     with tasks_header_col2:
-        st.markdown("<h2 style='text-align: center; margin-top: 0px;'>📝 Task Board</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; font-size:31px;margin-top: 0px;'>📝 Task Board</h2>", unsafe_allow_html=True)
     
     
     st.markdown("---")  # Add separator line
@@ -190,7 +190,7 @@ def handle_tasks(user_email):
     tab_today, tab_dashboard, tab_all, tab_my = st.tabs(["📅 Today's Tasks", "📊 Dashboard", "📋 All Tasks", "👤 My Tasks"])
 
     with tab_today:
-        st.subheader("📅 Today's Tasks")
+        st.markdown("<h3 style='font-size:28px;'>📅 Today's Tasks</h3>", unsafe_allow_html=True)
 
         # Show logged in user info
         user_name = get_user_name(user_email)
@@ -198,7 +198,9 @@ def handle_tasks(user_email):
 
         # Get today's date
         today = date.today()
-        st.markdown(f"### Tasks scheduled for today: **{today.strftime('%B %d, %Y')}**")
+        st.markdown(f"""<h3 style="font-size:28px;">
+        Tasks scheduled for today: <b>{today.strftime('%B %d, %Y')}</b></h3>""",unsafe_allow_html=True 
+        )
 
         # Filter tasks for today and for the current user (support multiple assignees)
         today_tasks = df[
@@ -208,7 +210,7 @@ def handle_tasks(user_email):
 
         if today_tasks.empty:
             st.info("🎉 No tasks scheduled for today! You're all caught up.")
-            st.markdown("### 💡 What you can do:")
+            st.markdown("<h3 style='font-size:28px;'>💡 What you can do:</h3>", unsafe_allow_html=True)
             st.markdown("- Check your **upcoming tasks** in the 'My Tasks' tab")
             st.markdown("- Review **overdue tasks** that need attention")
             st.markdown("- Plan ahead for tomorrow's schedule")

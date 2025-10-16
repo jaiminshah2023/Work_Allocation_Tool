@@ -75,6 +75,24 @@ def login_form():
     with logo_col1:
         with st.container():
             st.image("logos/childlogo.jpg", width=120)
+    with logo_col2:
+        st.markdown(
+        """
+        <h1 style='
+            text-align: center;
+            margin-top: 0px;
+            margin-bottom: 0px;
+            margin-left:50px;
+            color: #111111; /* Enhanced dark black */
+            font-size: 44px; /* Larger font */
+            font-weight: 700; /* Bolder */
+            letter-spacing: 1px;
+            font-family: "Segoe UI", Arial, sans-serif;
+            text-shadow: 1px 1px 2px #88888822;
+        '>Task Pilot</h1>
+        """,
+        unsafe_allow_html=True
+        )
     with logo_col3:
         with st.container():
             st.image("logos/tigerlogo.jpg", width=120)
@@ -94,10 +112,12 @@ def login_form():
         display: block;
         width: 100%;
         text-align: center;
-        font-size: 36px;
+        font-size: 32px;              /* Smaller than Task Pilot */
         margin: 30px 0 25px 0;
-        color: #2C3E50;
-        font-weight: 700;
+        color:  #222222;               /* Different color (blue shade) */
+        font-weight: 600;             /* Lighter font weight */
+        font-family: 'Segoe UI', Arial, sans-serif; /* Different font family */
+        letter-spacing: 1px;
     }
 
     .input-label {
@@ -216,6 +236,7 @@ def sidebar():
         st.rerun()
 
 # === Main Pages ===
+
 def tasks():
     # Get user's actual name from credentials
     user_name = get_user_name(st.session_state['user_email'])
@@ -230,9 +251,27 @@ def tasks():
             st.empty()
     
     with header_col2:
+        # Add the main title "Task Pilot" centered between the logos
         st.markdown(
-        f"<h2 style='text-align: center; margin-top: -20px;'>👋 Welcome, {user_name}</h2>",
+        """
+        <h1 style='
+            text-align: center;
+            margin-top: -30px;
+            margin-bottom: 0px;
+            margin-left:40px;
+            color: #111111; /* Enhanced dark black */
+            font-size: 44px; /* Larger font */
+            font-weight: 700; /* Bolder */
+            letter-spacing: 1px;
+            font-family: "Segoe UI", Arial, sans-serif;
+            text-shadow: 1px 1px 2px #88888822;
+        '>Task Pilot</h1>
+        """,
         unsafe_allow_html=True
+        )
+        st.markdown(
+            f"<h3 style='text-align: center; margin-top: -10px;font-size:32px;margin-left:20px;'>👋 Welcome, {user_name}</h3>",
+            unsafe_allow_html=True
         )
     with header_col3:
         with st.container(horizontal=True, horizontal_alignment='right',vertical_alignment='center'):
@@ -242,7 +281,6 @@ def tasks():
                 st.empty()    
     st.markdown("---")  # Add separator line
     handle_tasks(st.session_state["user_email"])
-    
 
 def show_projects():
     handle_projects(st.session_state["user_email"])
