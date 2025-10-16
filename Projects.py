@@ -105,7 +105,7 @@ def handle_projects(user_email):
         st.header("🆕 Create New Project")
         project_name = st.text_input("Project Name")
         description = st.text_area("Description")
-        start_date = st.date_input("Start Date", date.today())
+        start_date = st.date_input("Start Date", date.today(), key="newproj_start_date")
         start_date = pd.to_datetime(start_date).date()
         status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"])
         priority = st.selectbox("Priority", ["Low", "Medium", "High"])
@@ -113,7 +113,7 @@ def handle_projects(user_email):
 
         # End Date only enabled if status is Completed
         if status == "Completed":
-            end_date = st.date_input("Project Completion Date", value=start_date, min_value=start_date)
+            end_date = st.date_input("Project Completion Date", value=start_date, min_value=start_date, key="newproj_end_date")
             end_date = pd.to_datetime(end_date).date()
         else:
             st.text_input("Project Completion Date (set status to Completed to enable)", value="", disabled=True, key="disabled_proj_end_date")
@@ -201,7 +201,7 @@ def handle_projects(user_email):
         st.header(f"✏️ Edit Project: {project['project_name']}")
         project_name = st.text_input("Project Name", value=project['project_name'])
         description = st.text_area("Description", value=project['description'])
-        start_date = st.date_input("Start Date", value=pd.to_datetime(project['start_date']).date() if pd.notna(project['start_date']) else date.today())
+        start_date = st.date_input("Start Date", value=pd.to_datetime(project['start_date']).date() if pd.notna(project['start_date']) else date.today(), key=f"editproj_start_{idx}")
         start_date = pd.to_datetime(start_date).date()
         status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"], index=["Not Started", "In Progress", "Completed"].index(project['status']))
         priority_options = ["Low", "Medium", "High"]
@@ -217,7 +217,8 @@ def handle_projects(user_email):
             end_date = st.date_input(
                 "Project Completion Date", 
                 value=default_end_date, 
-                min_value=start_date
+                min_value=start_date,
+                key=f"editproj_end_{idx}"
             )
             end_date = pd.to_datetime(end_date).date()
         else:

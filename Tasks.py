@@ -119,9 +119,9 @@ def handle_tasks(user_email):
         assigned_to_list = [a.strip().lower() for a in assigned_to_list if a]
         priority = st.selectbox("Priority", ["Low", "Medium", "High"])
         status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"])
-        start = st.date_input("Start Date", date.today())
+        start = st.date_input("Start Date", date.today(), key="newtask_start_date")
         start = pd.to_datetime(start).date()
-        due = st.date_input("Due Date", value=start, min_value=start)
+        due = st.date_input("Due Date", value=start, min_value=start, key="newtask_due_date")
         due = pd.to_datetime(due).date()
 
         show_completion = status == "Completed"
@@ -263,7 +263,7 @@ def handle_tasks(user_email):
                     st.session_state.edit_task_idx = sel_idx
                     st.session_state.show_edit_dialog = True
                     st.session_state.active_tab = "today"
-                    st.rerun()
+                    #st.rerun()
                 except Exception:
                     st.error("Failed to select task for editing. Please try again.")
 
@@ -281,25 +281,29 @@ def handle_tasks(user_email):
                 st.markdown("---")
                 st.markdown("#### Edit Task")
                 with st.form(key=f"edit_task_form_{edit_idx}", clear_on_submit=False):
-                    new_task_name = st.text_input("Task Name", value=edit_row.get("task_name", ""))
-                    new_description = st.text_area("Description", value=edit_row.get("description", ""))
-                    new_due_date = st.date_input("Due Date", value=pd.to_datetime(edit_row.get("due_date", date.today())).date() if pd.notna(edit_row.get("due_date")) else date.today())
+                    new_task_name = st.text_input("Task Name", value=edit_row.get("task_name", ""), key=f"task_name_today_{edit_idx}")
+                    new_description = st.text_area("Description", value=edit_row.get("description", ""), key=f"desc_today_{edit_idx}")
+                    new_due_date = st.date_input("Due Date", value=pd.to_datetime(edit_row.get("due_date", date.today())).date() if pd.notna(edit_row.get("due_date")) else date.today(), key=f"due_today_{edit_idx}")
                     new_due_date = pd.to_datetime(new_due_date).date()
-                    new_priority = st.selectbox("Priority", ["Low", "Medium", "High"], index=["Low", "Medium", "High"].index(edit_row.get("priority", "Medium")))
-                    new_status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"], index=["Not Started", "In Progress", "Completed"].index(edit_row.get("status", "Not Started")))
-                    new_project = st.selectbox("Project", load_projects(), index=load_projects().index(edit_row.get("project_name", "")) if edit_row.get("project_name", "") in load_projects() else 0)
-                    new_start_date = st.date_input("Start Date", value=pd.to_datetime(edit_row.get("start_date", date.today())).date() if pd.notna(edit_row.get("start_date")) else date.today())
+                    new_priority = st.selectbox("Priority", ["Low", "Medium", "High"], index=["Low", "Medium", "High"].index(edit_row.get("priority", "Medium")), key=f"priority_today_{edit_idx}")
+                    new_status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"], index=["Not Started", "In Progress", "Completed"].index(edit_row.get("status", "Not Started")), key=f"status_today_{edit_idx}")
+                    new_project = st.selectbox("Project", load_projects(), index=load_projects().index(edit_row.get("project_name", "")) if edit_row.get("project_name", "") in load_projects() else 0, key=f"project_today_{edit_idx}")
+                    new_start_date = st.date_input("Start Date", value=pd.to_datetime(edit_row.get("start_date", date.today())).date() if pd.notna(edit_row.get("start_date")) else date.today(), key=f"start_today_{edit_idx}")
                     new_start_date = pd.to_datetime(new_start_date).date()
                     show_completion = new_status == "Completed"
                     if show_completion:
-                        new_completion_date = st.date_input("Completion Date", value=pd.to_datetime(edit_row.get("completion_date", date.today())).date() if pd.notna(edit_row.get("completion_date")) else date.today())
+                        new_completion_date = st.date_input("Completion Date", value=pd.to_datetime(edit_row.get("completion_date", date.today())).date() if pd.notna(edit_row.get("completion_date")) else date.today(), key=f"comp_today_{edit_idx}")
                         new_completion_date = pd.to_datetime(new_completion_date).date()
                     else:
                         new_completion_date = None
-                    new_comments = st.text_area("Comments", value=edit_row.get("comments", ""))
+                    new_comments = st.text_area("Comments", value=edit_row.get("comments", ""), key=f"comments_today_{edit_idx}")
 
-                    submitted = st.form_submit_button("Save Changes")
-                    cancel = st.form_submit_button("Cancel")
+                    col_a, col_b = st.columns([1,1])
+                    with col_a:
+                        submitted = st.form_submit_button("Save Task", key=f"save_today_{edit_idx}")
+                    with col_b:
+                        back = st.form_submit_button("Back to Task Board", key=f"back_today_{edit_idx}")
+
                     if submitted:
                         updated_task = {
                             "task_name": new_task_name,
@@ -319,13 +323,15 @@ def handle_tasks(user_email):
                             st.session_state.show_edit_dialog = False
                             st.session_state.edit_task_idx = None
                             st.session_state.active_tab = None
+                            st.session_state.task_page = "Tasks"
                             st.rerun()
                         else:
                             st.error("Failed to update task. Please try again.")
-                    if cancel:
+                    if back:
                         st.session_state.show_edit_dialog = False
                         st.session_state.edit_task_idx = None
                         st.session_state.active_tab = None
+                        st.session_state.task_page = "Tasks"
                         st.rerun()
 
     with tab_dashboard:
@@ -685,6 +691,7 @@ def handle_tasks(user_email):
                 if col in display_df.columns:
                     display_df[col] = display_df[col].apply(lambda x: x.strftime("%Y-%m-%d") if pd.notna(x) and x != "" else "")
             st.dataframe(display_df, use_container_width=True)
+            # (Edit option intentionally omitted for All Tasks — editing is available from Today's and My Tasks only)
             with tab_my:
                 st.subheader("👤 My Tasks")
                 st.write("Logged in as:", user_email)
@@ -719,14 +726,8 @@ def handle_tasks(user_email):
                         for col in ["Assign Date", "Due Date", "Completion Date"]:
                             if col in task_display.columns:
                                 task_display[col] = task_display[col].apply(lambda x: x.strftime("%Y-%m-%d") if pd.notna(x) and x != "" else "")
-                        cols = st.columns([10, 1])
-                        with cols[0]:
-                            st.dataframe(task_display, use_container_width=True, hide_index=True)
-                        with cols[1]:
-                            if st.button("Edit", key=f"edit_my_task_{idx}"):
-                                st.session_state.edit_task_idx = idx
-                                st.session_state.show_edit_dialog = True
-                                st.session_state.active_tab = "my"
+                        # Render the task row only (no per-row Edit column)
+                        st.dataframe(task_display, use_container_width=True, hide_index=True)
 
             
             # Selection control to edit a specific task
@@ -751,19 +752,16 @@ def handle_tasks(user_email):
                 st.markdown("---")
                 st.markdown("#### Edit Task")
                 with st.form(key=f"edit_task_form_my_{edit_idx}", clear_on_submit=False):
-                    new_task_name = st.text_input("Task Name", value=edit_row.get("task_name", ""))
-                    new_description = st.text_area("Description", value=edit_row.get("description", ""))
+                    new_task_name = st.text_input("Task Name", value=edit_row.get("task_name", ""), key=f"task_name_my_{edit_idx}")
+                    new_description = st.text_area("Description", value=edit_row.get("description", ""), key=f"desc_my_{edit_idx}")
                     # Note: assigned_to and created_by are kept as original, not editable
-                    new_start_date = st.date_input("Start Date", value=pd.to_datetime(edit_row.get("start_date", date.today())).date() if pd.notna(edit_row.get("start_date")) else date.today())
+                    new_start_date = st.date_input("Start Date", value=pd.to_datetime(edit_row.get("start_date", date.today())).date() if pd.notna(edit_row.get("start_date")) else date.today(), key=f"start_my_{edit_idx}")
                     new_start_date = pd.to_datetime(new_start_date).date()
-                    new_due_date = st.date_input("Due Date", value=pd.to_datetime(edit_row.get("due_date", new_start_date)).date() if pd.notna(edit_row.get("due_date")) else new_start_date, min_value=new_start_date)
+                    new_due_date = st.date_input("Due Date", value=pd.to_datetime(edit_row.get("due_date", new_start_date)).date() if pd.notna(edit_row.get("due_date")) else new_start_date, min_value=new_start_date, key=f"due_my_{edit_idx}")
                     new_due_date = pd.to_datetime(new_due_date).date()
-                    new_priority = st.selectbox("Priority", ["Low", "Medium", "High"], index=["Low", "Medium", "High"].index(edit_row.get("priority", "Medium")))
-                    new_status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"], index=["Not Started", "In Progress", "Completed"].index(edit_row.get("status", "Not Started")))
-                    new_project = st.selectbox("Project", load_projects(), index=load_projects().index(edit_row.get("project_name", "")) if edit_row.get("project_name", "") in load_projects() else 0)
-                    new_start_date = st.date_input("Start Date", value=pd.to_datetime(edit_row.get("start_date", date.today())).date() if pd.notna(edit_row.get("start_date")) else date.today())
-                    new_start_date = pd.to_datetime(new_start_date).date()
-                    
+                    new_priority = st.selectbox("Priority", ["Low", "Medium", "High"], index=["Low", "Medium", "High"].index(edit_row.get("priority", "Medium")), key=f"priority_my_{edit_idx}")
+                    new_status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"], index=["Not Started", "In Progress", "Completed"].index(edit_row.get("status", "Not Started")), key=f"status_my_{edit_idx}")
+                    new_project = st.selectbox("Project", load_projects(), index=load_projects().index(edit_row.get("project_name", "")) if edit_row.get("project_name", "") in load_projects() else 0, key=f"project_my_{edit_idx}")
                     # Completion Date - only show if status is Completed
                     show_completion = new_status == "Completed"
                     if show_completion:
@@ -771,19 +769,18 @@ def handle_tasks(user_email):
                         default_completion_date = pd.to_datetime(edit_row.get("completion_date", date.today())).date() if pd.notna(edit_row.get("completion_date")) else date.today()
                         if default_completion_date < new_start_date:
                             default_completion_date = new_start_date
-                        
-                        new_completion_date = st.date_input(
-                            "Completion Date", 
-                            value=default_completion_date, 
-                            min_value=new_start_date
-                        )
+                        new_completion_date = st.date_input("Completion Date", value=default_completion_date, min_value=new_start_date, key=f"comp_my_{edit_idx}")
                         new_completion_date = pd.to_datetime(new_completion_date).date()
                     else:
                         new_completion_date = None
-                    new_comments = st.text_area("Comments", value=edit_row.get("comments", ""))
+                    new_comments = st.text_area("Comments", value=edit_row.get("comments", ""), key=f"comments_my_{edit_idx}")
 
-                    submitted = st.form_submit_button("Save Changes")
-                    cancel = st.form_submit_button("Cancel")
+                    col_a, col_b = st.columns([1,1])
+                    with col_a:
+                        submitted = st.form_submit_button("Save Task", key=f"save_my_{edit_idx}")
+                    with col_b:
+                        back = st.form_submit_button("Back to Task Board", key=f"back_my_{edit_idx}")
+
                     if submitted:
                         updated_task = {
                             "task_name": new_task_name,
@@ -803,14 +800,18 @@ def handle_tasks(user_email):
                             st.session_state.show_edit_dialog = False
                             st.session_state.edit_task_idx = None
                             st.session_state.active_tab = None
+                            st.session_state.task_page = "Tasks"
                             st.rerun()
                         else:
                             st.error("Failed to update task. Please try again.")
-                    if cancel:
+                    if back:
                         st.session_state.show_edit_dialog = False
                         st.session_state.edit_task_idx = None
                         st.session_state.active_tab = None
+                        st.session_state.task_page = "Tasks"
                         st.rerun()
+
+    # (All Tasks edit option removed — edits are available from Today's and My tabs only)
 
     with st.sidebar:
         st.subheader("🗂 Tasks")
