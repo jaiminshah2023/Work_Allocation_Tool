@@ -6,6 +6,8 @@ import pandas as pd
 import json
 import time
 from datetime import datetime, timedelta
+import random
+from gspread.exceptions import APIError
 
 # === Rate Limiting and Caching ===
 # Cache configuration
@@ -16,6 +18,10 @@ cached_data = {}
 # Rate limiting configuration
 API_CALL_DELAY = 1.2  # Delay between API calls in seconds
 last_api_call_time = 0
+
+# Toggle this to True only when you want verbose debug output in the Streamlit UI
+# Set to False for normal operation to avoid showing debug popups to users
+DEBUG = False
 
 def rate_limit_api_call():
     """Add delay between API calls to respect rate limits."""
@@ -225,6 +231,113 @@ def save_tasks_to_sheets(df):
         return True
     except Exception as e:
         st.error(f"Error saving tasks: {e}")
+        return False
+
+
+def save_tasks_bulk_to_sheets(task_dicts, max_retries=5):
+    """Append multiple tasks to the sheet in a single API call with retry/backoff.
+    task_dicts: list of task dicts with the same keys used by save_task_to_sheets
+    """
+    try:
+        if not task_dicts:
+            return True
+
+        client = init_google_sheets()
+        if client is None:
+            return False
+
+        # Apply rate limiting
+        rate_limit_api_call()
+
+        sheet_ids = get_sheet_ids()
+        sheet = client.open_by_key(sheet_ids['tasks']).sheet1
+
+        # Ensure headers exist
+        try:
+            headers_row = sheet.row_values(1)
+            has_headers = len(headers_row) > 0
+        except Exception:
+            headers_row = []
+            has_headers = False
+
+        expected_headers = [
+            "task_name", "description", "project_name", "assigned_to",
+            "priority", "status", "start_date", "due_date", 
+            "completion_date", "comments", "created_by"
+        ]
+
+        if not has_headers or len(headers_row) < len(expected_headers):
+            sheet.clear()
+            sheet.append_row(expected_headers)
+            headers_row = expected_headers
+
+        # Create flexible mapping
+        header_variations = {
+            "task_name": ["task_name", "Task Name", "Task", "task", "name"],
+            "description": ["description", "Description", "desc", "Desc"],
+            "project_name": ["project_name", "Project Name", "Project", "project"],
+            "assigned_to": ["assigned_to", "Assigned To", "Assignee", "assignee", "assigned"],
+            "priority": ["priority", "Priority", "pri"],
+            "status": ["status", "Status", "stat"],
+            "start_date": ["start_date", "Start Date", "start", "Start"],
+            "due_date": ["due_date", "Due Date", "due", "Due"],
+            "completion_date": ["completion_date", "Completion Date", "completed", "Completed"],
+            "comments": ["comments", "Comments", "comment", "Comment", "notes", "Notes"],
+            "created_by": ["created_by", "Created By", "creator", "Creator"]
+        }
+
+        # Build mapping from headers_row
+        column_mapping = {}
+        for i, header in enumerate(headers_row):
+            header_lower = header.lower().strip()
+            for expected_field, variations in header_variations.items():
+                if header in variations or header_lower in [v.lower() for v in variations]:
+                    column_mapping[expected_field] = i
+                    break
+
+        # Build rows aligned to headers_row
+        rows = []
+        for task in task_dicts:
+            task_row = [""] * len(headers_row)
+            for field in [
+                "task_name", "description", "project_name", "assigned_to",
+                "priority", "status", "start_date", "due_date",
+                "completion_date", "comments", "created_by"
+            ]:
+                value = task.get(field, "")
+                if field in column_mapping:
+                    idx = column_mapping[field]
+                    if hasattr(value, 'strftime'):
+                        task_row[idx] = value.strftime('%Y-%m-%d')
+                    elif value is None or str(value).lower() == 'nat':
+                        task_row[idx] = ""
+                    else:
+                        task_row[idx] = value
+            rows.append(task_row)
+
+        # Try to append rows in a single API call with exponential backoff retries
+        attempt = 0
+        while attempt < max_retries:
+            try:
+                sheet.append_rows(rows, value_input_option='USER_ENTERED')
+                invalidate_cache('tasks')
+                return True
+            except APIError as e:
+                errstr = str(e)
+                # If quota error or 429, backoff and retry
+                if 'Quota exceeded' in errstr or '429' in errstr:
+                    attempt += 1
+                    sleep_time = (2 ** attempt) + random.random()
+                    time.sleep(sleep_time)
+                    continue
+                else:
+                    st.error(f"Error saving tasks: {e}")
+                    return False
+
+        st.error("Failed to save tasks after multiple retries due to quota limits. Please try again in a moment.")
+        return False
+    except Exception as e:
+        st.error(f"Error saving tasks (bulk): {e}")
         return False
 
 # === Load Users from Google Sheets ===
@@ -616,9 +729,7 @@ def save_task_to_sheets(task_dict):
             existing_data = sheet.get_all_records()
             has_headers = len(headers_row) > 0
             
-            # Debug: Show current headers
-            if has_headers:
-                st.info(f"📋 Current sheet headers: {headers_row}")
+            # (silent) current headers are read for internal mapping
             
             # Check if task already exists (for updates)
             existing_task_row = None
@@ -661,16 +772,15 @@ def save_task_to_sheets(task_dict):
             "created_by": ["created_by", "Created By", "creator", "Creator"]
         }
         
-        # If no headers or headers are incomplete, set up the sheet properly
+        # If no headers or headers are incomplete, set up the sheet properly (silent)
         if not has_headers or len(headers_row) < len(expected_headers):
-            st.info("📝 Setting up task sheet headers...")
             # Clear the sheet and add proper headers
             sheet.clear()
             sheet.append_row(expected_headers)
             headers_row = expected_headers
             has_headers = True
         
-        # Create column mapping based on actual headers with flexibility
+    # Create column mapping based on actual headers with flexibility
         column_mapping = {}
         for i, header in enumerate(headers_row):
             header_lower = header.lower().strip()
@@ -703,11 +813,8 @@ def save_task_to_sheets(task_dict):
                 col_index = column_mapping[field]
                 task_row[col_index] = value
         
-        # Debug: Show column mapping
-        st.info(f"🗂️ Column mapping: {column_mapping}")
+        # Column mapping created (no UI debug output)
         missing_fields = [field for field in field_mappings.keys() if field not in column_mapping]
-        if missing_fields:
-            st.warning(f"⚠️ Missing columns for fields: {missing_fields}")
         
         # Convert dates to strings if they're datetime objects
         for i, value in enumerate(task_row):
@@ -716,18 +823,15 @@ def save_task_to_sheets(task_dict):
             elif value is None or str(value).lower() == 'nat':
                 task_row[i] = ""
         
-        # Debug: Show what data we're about to save
-        st.info(f"💾 Saving task data: {dict(zip(headers_row, task_row))}")
+        # Data prepared for save (no UI debug output)
         
         # If task exists, update it; otherwise append new task
         if existing_task_row:
-            # Update existing task
-            st.info(f"📝 Updating existing task at row {existing_task_row}")
+            # Update existing task (silent)
             for col, value in enumerate(task_row, start=1):
                 sheet.update_cell(existing_task_row, col, value)
         else:
-            # Append new task
-            st.info("📝 Adding new task to sheet")
+            # Append new task (silent)
             sheet.append_row(task_row)
         
         # Invalidate tasks cache since we've modified the data
@@ -759,8 +863,7 @@ def update_task_in_sheets(task_name, updated_task_dict):
         headers_row = sheet.row_values(1)
         existing_data = sheet.get_all_records()
         
-        # Debug: Show current headers
-        st.info(f"📋 Current sheet headers: {headers_row}")
+        # (silent) current headers read for mapping
         
         # Create flexible column mapping like in save_task_to_sheets
         header_variations = {
@@ -786,8 +889,7 @@ def update_task_in_sheets(task_name, updated_task_dict):
                     column_mapping[expected_field] = i
                     break
         
-        # Debug: Show column mapping
-        st.info(f"🗂️ Column mapping: {column_mapping}")
+        # Column mapping created (no UI debug output)
         
         # Find the task row
         task_row = None
@@ -837,11 +939,8 @@ def update_task_in_sheets(task_name, updated_task_dict):
                 sheet.update_cell(task_row, col_index, value)
                 updated_count += 1
         
-        # Debug: Show what we updated
-        st.info(f"💾 Updated {updated_count} fields for task '{task_name}'")
+        # Update completed (no UI debug output)
         missing_fields = [field for field in field_mappings.keys() if field not in column_mapping]
-        if missing_fields:
-            st.warning(f"⚠️ Could not update fields (columns not found): {missing_fields}")
         
         # Invalidate tasks cache since we've modified the data
         invalidate_cache('tasks')

@@ -23,7 +23,9 @@ if "is_logged_in" not in st.session_state:
 if "user_email" not in st.session_state:
     st.session_state["user_email"] = ""
 if "current_page" not in st.session_state:
-    st.session_state["current_page"] = "Home"
+    st.session_state["current_page"] = "Tasks"
+if "clear_task_filters" not in st.session_state:
+    st.session_state["clear_task_filters"] = True
 
 # === Email Validator ===
 def validate_email(email):
@@ -64,40 +66,152 @@ def show_data_status():
 
 # === Login Form ===
 def login_form():
-    st.title("🔐 Login")
-    email = st.text_input("Enter your email")
-    password = st.text_input("Enter password", type="password")
 
-    if st.button("Login"):
-        if USE_GOOGLE_SHEETS:
-            # Check credentials using Google Sheets and password
-            if check_user_credentials(email) and validate_email(email):
-                if password == "Child#1234":
-                    st.session_state["is_logged_in"] = True
-                    st.session_state["user_email"] = email.strip()
-                    st.success("Login successful!")
-                    st.rerun()
+    # Top logo row (before login form)
+    st.markdown('')
+    st.markdown('')
+    logo_col1, logo_col2, logo_col3 = st.columns([1, 6, 1])
+
+    with logo_col1:
+        with st.container():
+            st.image("logos/childlogo.jpg", width=120)
+    with logo_col2:
+        st.markdown(
+        """
+        <h1 style='
+            text-align: center;
+            margin-top: 0px;
+            margin-bottom: 0px;
+            margin-left:50px;
+            color: #111111; /* Enhanced dark black */
+            font-size: 44px; /* Larger font */
+            font-weight: 700; /* Bolder */
+            letter-spacing: 1px;
+            font-family: "Segoe UI", Arial, sans-serif;
+            text-shadow: 1px 1px 2px #88888822;
+        '>Task Pilot</h1>
+        """,
+        unsafe_allow_html=True
+        )
+    with logo_col3:
+        with st.container():
+            st.image("logos/tigerlogo.jpg", width=120)
+
+    # CSS fixes (with custom border styles added)
+    st.markdown(
+    """
+    <style>
+    [data-testid="column"] img {
+        object-fit: contain;
+        margin-top: 32px;
+        height: auto !important;
+        max-width: 120px !important;
+    }
+
+    .login-title {
+        display: block;
+        width: 100%;
+        text-align: center;
+        font-size: 32px;              /* Smaller than Task Pilot */
+        margin: 30px 0 25px 0;
+        color:  #222222;               /* Different color (blue shade) */
+        font-weight: 600;             /* Lighter font weight */
+        font-family: 'Segoe UI', Arial, sans-serif; /* Different font family */
+        letter-spacing: 1px;
+    }
+
+    .input-label {
+        font-size: 19px;
+        font-weight: 550;
+        color: #2C3E50;
+        margin-bottom: 2px;
+    }
+
+    div.stTextInput > div {
+        margin-top: -10px !important;
+    }
+
+    /* Center login button */
+    div.stButton {
+        display: flex;
+        justify-content: center;
+    }
+
+    div.stButton > button {
+        width: 120px;
+        padding: 6px 0px !important;
+        font-size: 14px !important;
+        border-radius: 10px;
+        background-color: #2C3E50;
+        color: white;
+        border: none;
+        transition: 0.2s;
+    }
+
+    div.stButton > button:hover {
+        background-color: #34495E;
+        transform: scale(1.03);
+    }
+
+    div.stContainer > div:first-child {
+        border: 10px solid #2C3E50;  /* Increased thickness */
+        border-radius: 20px;         /* Rounded corners */
+        padding: 25px;               /* Inner spacing so content doesn't touch border */
+        box-shadow: 0 6px 15px rgba(0,0,0,0.2); /* Optional: subtle shadow */
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True
+    )
+
+    # Centered input fields and button
+    col1, col2, col3 = st.columns([2, 3, 2])
+    with col2:
+        with st.container(border=True, horizontal_alignment='center', vertical_alignment='center'):
+            st.markdown('<div class="login-title">Log-in</div>', unsafe_allow_html=True)
+            st.markdown('<div class="input-label">✉️ Email</div>', unsafe_allow_html=True)
+            email = st.text_input("", key="email", placeholder="Enter your email")
+            st.markdown('<div class="input-label">🔑 Password</div>', unsafe_allow_html=True)
+            password = st.text_input("", type="password", key="password", placeholder="Enter your password")
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            if st.button("Login", key="login_button"):
+                if USE_GOOGLE_SHEETS:
+                    if check_user_credentials(email) and validate_email(email):
+                        if password == "Child#1234":
+                            st.session_state["is_logged_in"] = True
+                            st.session_state["user_email"] = email.strip()
+                            st.success("Login successful!")
+                            st.rerun()
+                        else:
+                            st.error("Incorrect password.")
+                    else:
+                        st.error("Invalid email or user not found in system.")
                 else:
-                    st.error("Incorrect password.")
-            else:
-                st.error("Invalid email or user not found in system.")
-        else:
-            st.error("Google Sheets integration is required for login. Please contact administrator.")
+                    st.error("Google Sheets integration is required for login. Please contact administrator.")
 
+# === Sidebar Navigation ===        
 # === Sidebar ===
 def sidebar():
     
     # Show data status first
     show_data_status()
 
-    if st.sidebar.button("🏠 Home"):
-        st.session_state["current_page"] = "Home"
+    # Navigation buttons
+    if st.sidebar.button("📝 Task Board", key="nav_tasks"):
+        if st.session_state.current_page != "Tasks":
+            st.session_state.clear_task_filters = True
+        st.session_state.current_page = "Tasks"
+        st.rerun()
 
-    if st.sidebar.button("📁 Projects"):
-        st.session_state["current_page"] = "Projects"
+    if st.sidebar.button("📂 Projects", key="nav_projects"):
+        st.session_state.current_page = "Projects"
+        st.rerun()
 
-    if st.sidebar.button("📝 Tasks"):
-        st.session_state["current_page"] = "Tasks"
+    if st.sidebar.button("📊 Projects Overview", key="nav_dashboard"):
+        st.session_state.current_page = "Projects Overview"
+        st.rerun()
 
     st.sidebar.markdown("---")
     
@@ -114,14 +228,16 @@ def sidebar():
             st.sidebar.error("Google Sheets integration not available")
     
     st.sidebar.markdown("---")
-    if st.sidebar.button("📄 Logout"):
+    
+    if st.sidebar.button("Logout", key="logout"):
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.success("Logged out.")
         st.rerun()
 
 # === Main Pages ===
-def home():
+
+def tasks():
     # Get user's actual name from credentials
     user_name = get_user_name(st.session_state['user_email'])
     
@@ -135,24 +251,39 @@ def home():
             st.empty()
     
     with header_col2:
-        st.markdown("<h1 style='text-align: center; margin-top: 20px;'>👋 Welcome, {}</h1>".format(
-            user_name
-        ), unsafe_allow_html=True)
-    
+        # Add the main title "Task Pilot" centered between the logos
+        st.markdown(
+        """
+        <h1 style='
+            text-align: center;
+            margin-top: -30px;
+            margin-bottom: 0px;
+            margin-left:40px;
+            color: #111111; /* Enhanced dark black */
+            font-size: 44px; /* Larger font */
+            font-weight: 700; /* Bolder */
+            letter-spacing: 1px;
+            font-family: "Segoe UI", Arial, sans-serif;
+            text-shadow: 1px 1px 2px #88888822;
+        '>Task Pilot</h1>
+        """,
+        unsafe_allow_html=True
+        )
+        st.markdown(
+            f"<h3 style='text-align: center; margin-top: -10px;font-size:32px;margin-left:20px;'>👋 Welcome, {user_name}</h3>",
+            unsafe_allow_html=True
+        )
     with header_col3:
-        if os.path.exists("logos/tigerlogo.jpg"):
-            st.image("logos/tigerlogo.jpg", width=120)
-        else:
-            st.empty()
-    
+        with st.container(horizontal=True, horizontal_alignment='right',vertical_alignment='center'):
+            if os.path.exists("logos/tigerlogo.jpg"):
+                st.image("logos/tigerlogo.jpg", width=120)
+            else:
+                st.empty()    
     st.markdown("---")  # Add separator line
-    show_dashboard()
+    handle_tasks(st.session_state["user_email"])
 
 def show_projects():
     handle_projects(st.session_state["user_email"])
-
-def show_tasks():
-    handle_tasks(st.session_state["user_email"])
 
 # === Application Runner ===
 def main():
@@ -165,12 +296,12 @@ def main():
         st.markdown("<br>", unsafe_allow_html=True)
         page = st.session_state["current_page"]
 
-        if page == "Home":
-            home()
+        if page == "Tasks":
+            tasks()
         elif page == "Projects":
             show_projects()
-        elif page == "Tasks":
-            show_tasks()
+        elif page == "Projects Overview":
+            show_dashboard()
 
 if __name__ == "__main__":
     main()

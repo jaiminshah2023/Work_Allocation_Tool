@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import os
@@ -21,6 +22,7 @@ except ImportError:
 # Remove local file references - all data now comes from Google Sheets
 
 # === Load Tasks ===
+@st.cache_data(ttl=60)
 def load_tasks():
     if USE_GOOGLE_SHEETS:
         return load_tasks_from_sheets()
@@ -81,7 +83,9 @@ def handle_tasks(user_email):
     # Always load df and page at the start so they're available for all code paths
     page = st.session_state.get("task_page", "Tasks")
     df = load_tasks()
-    df["assigned_to"] = df["assigned_to"].astype(str).str.strip().str.lower()
+    # normalize assigned_to as comma-separated lowercase string and create list column
+    df["assigned_to"] = df["assigned_to"].astype(str).fillna("").apply(lambda s: ", ".join([x.strip().lower() for x in str(s).split(',') if x and x.strip()]))
+    df["assigned_to_list"] = df["assigned_to"].apply(lambda s: [x.strip().lower() for x in s.split(',') if x.strip()])
     user_email = user_email.strip().lower()
 
     # Remove Create New Task button at the top
@@ -115,9 +119,9 @@ def handle_tasks(user_email):
         assigned_to_list = [a.strip().lower() for a in assigned_to_list if a]
         priority = st.selectbox("Priority", ["Low", "Medium", "High"])
         status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"])
-        start = st.date_input("Start Date", date.today())
+        start = st.date_input("Start Date", date.today(), key="newtask_start_date")
         start = pd.to_datetime(start).date()
-        due = st.date_input("Due Date")
+        due = st.date_input("Due Date", value=start, min_value=start, key="newtask_due_date")
         due = pd.to_datetime(due).date()
 
         show_completion = status == "Completed"
@@ -137,34 +141,32 @@ def handle_tasks(user_email):
                 if not assigned_to_list:
                     st.error("Please select at least one user to assign the task to.")
                     return
-                # Save a row for each assignee
-                save_success = True
-                for assigned_to in assigned_to_list:
-                    task_data = {
-                        "task_name": task_name,
-                        "description": description,
-                        "project_name": project_name,
-                        "assigned_to": assigned_to,
-                        "priority": priority,
-                        "status": status,
-                        "start_date": start,
-                        "due_date": due,
-                        "completion_date": comp_date if show_completion else None,
-                        "comments": comments,
-                        "created_by": user_email
-                    }
-                    try:
-                        if not save_task(task_data):
-                            save_success = False
-                    except Exception as e:
-                        st.error(f"Error saving task for {assigned_to}: {str(e)}")
-                        save_success = False
-                if save_success:
-                    st.success("Task(s) saved successfully!")
-                    st.session_state.task_page = "Tasks"
-                    st.rerun()
-                else:
-                    st.error("Failed to save one or more tasks. Please try again.")
+
+                # Save a single task record with multiple assignees in one field
+                assigned_to_str = ", ".join(assigned_to_list)
+                task_obj = {
+                    "task_name": task_name,
+                    "description": description,
+                    "project_name": project_name,
+                    "assigned_to": assigned_to_str,
+                    "priority": priority,
+                    "status": status,
+                    "start_date": start,
+                    "due_date": due,
+                    "completion_date": comp_date if show_completion else None,
+                    "comments": comments,
+                    "created_by": user_email
+                }
+
+                try:
+                    if save_task(task_obj):
+                        st.success("Task saved successfully!")
+                        st.session_state.task_page = "Tasks"
+                        st.rerun()
+                    else:
+                        st.error("Failed to save the task. Please try again.")
+                except Exception as e:
+                    st.error(f"Error saving task: {str(e)}")
         with col2:
             if st.button("🔙 Back", key="back_task"):
                 st.session_state.task_page = "Tasks"
@@ -172,52 +174,43 @@ def handle_tasks(user_email):
         return
 
     # Header with logos for Tasks page
-    tasks_header_col1, tasks_header_col2, tasks_header_col3 = st.columns([1, 3, 1])
-    
-    with tasks_header_col1:
-        if os.path.exists("logos/childlogo.jpg"):
-            st.image("logos/childlogo.jpg", width=100)
-        else:
-            st.empty()
-    
+    tasks_header_col1, tasks_header_col2, tasks_header_col3 = st.columns([1, 3, 1],vertical_alignment='center')
     with tasks_header_col2:
-        st.markdown("<h1 style='text-align: center; margin-top: 20px;'>📝 Tasks</h1>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; font-size:31px;margin-top: 0px;'>📝 Task Board</h2>", unsafe_allow_html=True)
     
-    with tasks_header_col3:
-        if os.path.exists("logos/tigerlogo.jpg"):
-            st.image("logos/tigerlogo.jpg", width=100)
-        else:
-            st.empty()
     
     st.markdown("---")  # Add separator line
     
     df = load_tasks()
-    df["assigned_to"] = df["assigned_to"].astype(str).str.strip().str.lower()
+    df["assigned_to"] = df["assigned_to"].astype(str).fillna("").apply(lambda s: ", ".join([x.strip().lower() for x in str(s).split(',') if x and x.strip()]))
+    df["assigned_to_list"] = df["assigned_to"].apply(lambda s: [x.strip().lower() for x in s.split(',') if x.strip()])
     user_email = user_email.strip().lower()
     page = st.session_state.get("task_page", "Tasks")
 
     tab_today, tab_dashboard, tab_all, tab_my = st.tabs(["📅 Today's Tasks", "📊 Dashboard", "📋 All Tasks", "👤 My Tasks"])
 
     with tab_today:
-        st.subheader("📅 Today's Tasks")
-        
+        st.markdown("<h3 style='font-size:28px;'>📅 Today's Tasks</h3>", unsafe_allow_html=True)
+
         # Show logged in user info
         user_name = get_user_name(user_email)
         st.info(f"👤 **Logged in as:** {user_name}")
-        
+
         # Get today's date
         today = date.today()
-        st.markdown(f"### Tasks scheduled for today: **{today.strftime('%B %d, %Y')}**")
-        
-        # Filter tasks for today and for the current user
+        st.markdown(f"""<h3 style="font-size:28px;">
+        Tasks scheduled for today: <b>{today.strftime('%B %d, %Y')}</b></h3>""",unsafe_allow_html=True 
+        )
+
+        # Filter tasks for today and for the current user (support multiple assignees)
         today_tasks = df[
-            (df['assigned_to'] == user_email) & 
+            (df['assigned_to_list'].apply(lambda lst: user_email in lst)) &
             (pd.to_datetime(df['start_date'], errors='coerce').dt.date == today)
         ].copy()
-        
+
         if today_tasks.empty:
             st.info("🎉 No tasks scheduled for today! You're all caught up.")
-            st.markdown("### 💡 What you can do:")
+            st.markdown("<h3 style='font-size:28px;'>💡 What you can do:</h3>", unsafe_allow_html=True)
             st.markdown("- Check your **upcoming tasks** in the 'My Tasks' tab")
             st.markdown("- Review **overdue tasks** that need attention")
             st.markdown("- Plan ahead for tomorrow's schedule")
@@ -227,7 +220,7 @@ def handle_tasks(user_email):
             completed_today = len(today_tasks[today_tasks['status'] == 'Completed'])
             in_progress_today = len(today_tasks[today_tasks['status'] == 'In Progress'])
             not_started_today = len(today_tasks[today_tasks['status'] == 'Not Started'])
-            
+
             # Display metrics
             col1, col2, col3, col4 = st.columns(4)
             with col1:
@@ -238,84 +231,110 @@ def handle_tasks(user_email):
                 st.metric("🔄 In Progress", in_progress_today)
             with col4:
                 st.metric("🆕 Not Started", not_started_today)
-            
+
             st.markdown("---")
-            
-            # Group tasks by priority for better organization
-            high_priority = today_tasks[today_tasks['priority'] == 'High']
-            medium_priority = today_tasks[today_tasks['priority'] == 'Medium']
-            low_priority = today_tasks[today_tasks['priority'] == 'Low']
-            
-            # Display high priority tasks first
-            if not high_priority.empty:
-                st.markdown("### 🔴 High Priority Tasks")
-                for idx, row in high_priority.iterrows():
-                    status_emoji = "✅" if row['status'] == 'Completed' else "🔄" if row['status'] == 'In Progress' else "🆕"
-                    
-                    with st.expander(f"{status_emoji} {row['task_name']}", expanded=row['status'] != 'Completed'):
-                        col1, col2 = st.columns([3, 1])
-                        with col1:
-                            st.write(f"**Project:** {row['project_name']}")
-                            st.write(f"**Description:** {row.get('description', 'No description')}")
-                            st.write(f"**Due Date:** {pd.to_datetime(row['due_date']).strftime('%Y-%m-%d') if pd.notna(row['due_date']) else 'Not set'}")
-                            st.write(f"**Status:** {row['status']}")
-                            if row.get('comments'):
-                                st.write(f"**Comments:** {row['comments']}")
-                        with col2:
-                            if st.button("Edit", key=f"edit_today_high_{idx}"):
-                                st.session_state.edit_task_idx = idx
-                                st.session_state.show_edit_dialog = True
-                                st.session_state.active_tab = "today"
-            
-            # Display medium priority tasks
-            if not medium_priority.empty:
-                st.markdown("### 🟡 Medium Priority Tasks")
-                for idx, row in medium_priority.iterrows():
-                    status_emoji = "✅" if row['status'] == 'Completed' else "🔄" if row['status'] == 'In Progress' else "🆕"
-                    
-                    with st.expander(f"{status_emoji} {row['task_name']}", expanded=False):
-                        col1, col2 = st.columns([3, 1])
-                        with col1:
-                            st.write(f"**Project:** {row['project_name']}")
-                            st.write(f"**Description:** {row.get('description', 'No description')}")
-                            st.write(f"**Due Date:** {pd.to_datetime(row['due_date']).strftime('%Y-%m-%d') if pd.notna(row['due_date']) else 'Not set'}")
-                            st.write(f"**Status:** {row['status']}")
-                            if row.get('comments'):
-                                st.write(f"**Comments:** {row['comments']}")
-                        with col2:
-                            if st.button("Edit", key=f"edit_today_medium_{idx}"):
-                                st.session_state.edit_task_idx = idx
-                                st.session_state.show_edit_dialog = True
-                                st.session_state.active_tab = "today"
-            
-            # Display low priority tasks
-            if not low_priority.empty:
-                st.markdown("### 🟢 Low Priority Tasks")
-                for idx, row in low_priority.iterrows():
-                    status_emoji = "✅" if row['status'] == 'Completed' else "🔄" if row['status'] == 'In Progress' else "🆕"
-                    
-                    with st.expander(f"{status_emoji} {row['task_name']}", expanded=False):
-                        col1, col2 = st.columns([3, 1])
-                        with col1:
-                            st.write(f"**Project:** {row['project_name']}")
-                            st.write(f"**Description:** {row.get('description', 'No description')}")
-                            st.write(f"**Due Date:** {pd.to_datetime(row['due_date']).strftime('%Y-%m-%d') if pd.notna(row['due_date']) else 'Not set'}")
-                            st.write(f"**Status:** {row['status']}")
-                            if row.get('comments'):
-                                st.write(f"**Comments:** {row['comments']}")
-                        with col2:
-                            if st.button("Edit", key=f"edit_today_low_{idx}"):
-                                st.session_state.edit_task_idx = idx
-                                st.session_state.show_edit_dialog = True
-                                st.session_state.active_tab = "today"
-            
-            # Progress bar for today's completion
-            if total_today > 0:
-                completion_percentage = (completed_today / total_today) * 100
+
+            # Build a display DataFrame for today
+            display_today = today_tasks.rename(columns={
+                "task_name": "Task Name",
+                "description": "Description",
+                "project_name": "Project",
+                "assigned_to": "Assignee",
+                "priority": "Priority",
+                "status": "Status",
+                "start_date": "Start Date",
+                "due_date": "Due Date",
+                "completion_date": "Completion Date",
+                "comments": "Comments",
+                "created_by": "Created By"
+            })[["Task Name", "Description", "Project", "Assignee", "Priority", "Status", "Start Date", "Due Date", "Completion Date", "Comments", "Created By"]]
+
+            # Format date columns
+            for col in ["Start Date", "Due Date", "Completion Date"]:
+                if col in display_today.columns:
+                    display_today[col] = display_today[col].apply(lambda x: x.strftime("%Y-%m-%d") if pd.notna(x) and x != "" else "")
+
+            st.dataframe(display_today, use_container_width=True)
+
+            # Selection control to edit a specific task
+            selection_options = [f"{idx} | {row['task_name']}" for idx, row in today_tasks.iterrows()]
+            selected = st.selectbox("Select a task to edit", options=["" ] + selection_options, key="today_select")
+            if selected and st.button("Edit Selected Task", key="edit_selected_today"):
+                try:
+                    sel_idx = int(selected.split("|")[0].strip())
+                    st.session_state.edit_task_idx = sel_idx
+                    st.session_state.show_edit_dialog = True
+                    st.session_state.active_tab = "today"
+                    #st.rerun()
+                except Exception:
+                    st.error("Failed to select task for editing. Please try again.")
+
+        # Render edit dialog in Today's tab when requested
+        if st.session_state.get("show_edit_dialog") and st.session_state.get("edit_task_idx") is not None and st.session_state.get("active_tab") == "today":
+            edit_idx = st.session_state.edit_task_idx
+            # Recompute today's tasks for the user
+            today = date.today()
+            today_tasks = df[
+                (df['assigned_to_list'].apply(lambda lst: user_email in lst)) &
+                (pd.to_datetime(df['start_date'], errors='coerce').dt.date == today)
+            ].copy()
+            if edit_idx in today_tasks.index:
+                edit_row = today_tasks.loc[edit_idx]
                 st.markdown("---")
-                st.markdown("### 📊 Today's Progress")
-                st.progress(completion_percentage / 100)
-                st.write(f"**{completion_percentage:.1f}%** of today's tasks completed ({completed_today}/{total_today})")
+                st.markdown("#### Edit Task")
+                with st.form(key=f"edit_task_form_{edit_idx}", clear_on_submit=False):
+                    new_task_name = st.text_input("Task Name", value=edit_row.get("task_name", ""), key=f"task_name_today_{edit_idx}")
+                    new_description = st.text_area("Description", value=edit_row.get("description", ""), key=f"desc_today_{edit_idx}")
+                    new_due_date = st.date_input("Due Date", value=pd.to_datetime(edit_row.get("due_date", date.today())).date() if pd.notna(edit_row.get("due_date")) else date.today(), key=f"due_today_{edit_idx}")
+                    new_due_date = pd.to_datetime(new_due_date).date()
+                    new_priority = st.selectbox("Priority", ["Low", "Medium", "High"], index=["Low", "Medium", "High"].index(edit_row.get("priority", "Medium")), key=f"priority_today_{edit_idx}")
+                    new_status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"], index=["Not Started", "In Progress", "Completed"].index(edit_row.get("status", "Not Started")), key=f"status_today_{edit_idx}")
+                    new_project = st.selectbox("Project", load_projects(), index=load_projects().index(edit_row.get("project_name", "")) if edit_row.get("project_name", "") in load_projects() else 0, key=f"project_today_{edit_idx}")
+                    new_start_date = st.date_input("Start Date", value=pd.to_datetime(edit_row.get("start_date", date.today())).date() if pd.notna(edit_row.get("start_date")) else date.today(), key=f"start_today_{edit_idx}")
+                    new_start_date = pd.to_datetime(new_start_date).date()
+                    show_completion = new_status == "Completed"
+                    if show_completion:
+                        new_completion_date = st.date_input("Completion Date", value=pd.to_datetime(edit_row.get("completion_date", date.today())).date() if pd.notna(edit_row.get("completion_date")) else date.today(), key=f"comp_today_{edit_idx}")
+                        new_completion_date = pd.to_datetime(new_completion_date).date()
+                    else:
+                        new_completion_date = None
+                    new_comments = st.text_area("Comments", value=edit_row.get("comments", ""), key=f"comments_today_{edit_idx}")
+
+                    col_a, col_b = st.columns([1,1])
+                    with col_a:
+                        submitted = st.form_submit_button("Save Task", key=f"save_today_{edit_idx}")
+                    with col_b:
+                        back = st.form_submit_button("Back to Task Board", key=f"back_today_{edit_idx}")
+
+                    if submitted:
+                        updated_task = {
+                            "task_name": new_task_name,
+                            "description": new_description,
+                            "project_name": new_project,
+                            "priority": new_priority,
+                            "status": new_status,
+                            "start_date": new_start_date,
+                            "due_date": new_due_date,
+                            "completion_date": new_completion_date if show_completion else None,
+                            "comments": new_comments,
+                            "assigned_to": edit_row.get("assigned_to"),
+                            "created_by": edit_row.get("created_by")
+                        }
+                        if update_task_in_sheets(edit_row.get("task_name"), updated_task):
+                            st.success(f"Task '{new_task_name}' updated successfully!")
+                            st.session_state.show_edit_dialog = False
+                            st.session_state.edit_task_idx = None
+                            st.session_state.active_tab = None
+                            st.session_state.task_page = "Tasks"
+                            st.rerun()
+                        else:
+                            st.error("Failed to update task. Please try again.")
+                    if back:
+                        st.session_state.show_edit_dialog = False
+                        st.session_state.edit_task_idx = None
+                        st.session_state.active_tab = None
+                        st.session_state.task_page = "Tasks"
+                        st.rerun()
 
     with tab_dashboard:
         st.subheader("📊 Task Dashboard")
@@ -323,269 +342,316 @@ def handle_tasks(user_email):
         # Show logged in user info
         user_name = get_user_name(user_email)
         st.info(f"👤 **Logged in as:** {user_name}")
-        
-        # Add filters for dashboard
-        st.markdown("### 📊 Dashboard Filters")
+
+        main_col, right_col = st.columns([3, 1])
         
         # Create filter columns
-        filter_col1, filter_col2 = st.columns(2)
-        filter_col3, filter_col4 = st.columns(2)
+        all_projects = []
+        try:
+            all_projects = load_projects()
+        except Exception:
+            all_projects = []
+        if not df.empty and 'project_name' in df.columns:
+            all_projects = list(set(all_projects) | set(df['project_name'].dropna().unique().tolist()))
+        all_projects = sorted(all_projects)
         
-        with filter_col1:
+        # Create filter columns
+        
+        
+        with right_col:
+            st.markdown("### 📊 Dashboard Filters")
             filter_project = st.multiselect(
                 "Filter by Project",
-                options=df['project_name'].unique().tolist() if not df.empty else [],
-                default=df['project_name'].unique().tolist() if not df.empty else []
+                options=all_projects,
+                default=[] 
             )
-        
-        with filter_col2:
             filter_status = st.multiselect(
                 "Filter by Status", 
                 options=df['status'].unique().tolist() if not df.empty else [],
-                default=df['status'].unique().tolist() if not df.empty else []
+                default=[]  
             )
-        
-        with filter_col3:
             filter_priority = st.multiselect(
                 "Filter by Priority", 
                 options=df['priority'].unique().tolist() if not df.empty and 'priority' in df.columns else [],
-                default=df['priority'].unique().tolist() if not df.empty and 'priority' in df.columns else []
+                default=[]  
             )
-        
-        with filter_col4:
+            # Build list of unique individual assignees from assigned_to_list
+            unique_assignees = []
+            if not df.empty:
+                unique_assignees = sorted({a for lst in df['assigned_to_list'] for a in lst})
             filter_assignee = st.multiselect(
                 "Filter by Assignee",
-                options=df['assigned_to'].unique().tolist() if not df.empty else [],
-                default=df['assigned_to'].unique().tolist() if not df.empty else []
-            )
-        
-        # Apply filters
-        df_filtered = df.copy()
-        if not df_filtered.empty:
-            if filter_project:
-                df_filtered = df_filtered[df_filtered['project_name'].isin(filter_project)]
-            if filter_status:
-                df_filtered = df_filtered[df_filtered['status'].isin(filter_status)]
-            if filter_priority and 'priority' in df_filtered.columns:
-                df_filtered = df_filtered[df_filtered['priority'].isin(filter_priority)]
-            if filter_assignee:
-                df_filtered = df_filtered[df_filtered['assigned_to'].isin(filter_assignee)]
-        
-        # Calculate summary statistics with filtered data
-        total_tasks = len(df_filtered) if not df_filtered.empty else 0
-        completed_tasks = len(df_filtered[df_filtered['status'] == 'Completed']) if not df_filtered.empty else 0
-        incomplete_tasks = len(df_filtered[df_filtered['status'] != 'Completed']) if not df_filtered.empty else 0
-        
-        # Calculate overdue tasks (tasks with due_date in the past and status != 'Completed')
-        current_date = pd.Timestamp.now().date()
-        overdue_tasks = 0
-        if not df_filtered.empty and 'due_date' in df_filtered.columns:
-            df_copy = df_filtered.copy()
-            df_copy['due_date'] = pd.to_datetime(df_copy['due_date'], errors='coerce')
-            overdue_mask = (
-                (df_copy['due_date'].dt.date < current_date) & 
-                (df_copy['status'] != 'Completed') &
-                (df_copy['due_date'].notna())
-            )
-            overdue_tasks = len(df_copy[overdue_mask])
-        
-        # Display statistics in 4 columns
-        st.markdown("---")
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.metric(
-                label="Total completed tasks",
-                value=str(completed_tasks)
-            )
-        
-        with col2:
-            st.metric(
-                label="Total incomplete tasks", 
-                value=str(incomplete_tasks)
-            )
-        
-        with col3:
-            st.metric(
-                label="Total overdue tasks",
-                value=str(overdue_tasks)
-            )
-        
-        with col4:
-            st.metric(
-                label="Total tasks",
-                value=str(total_tasks)
-            )
-        
-        # Add some spacing
-        st.markdown("---")
-        
-        if not df_filtered.empty:
-            # Create charts in two rows
+                options=unique_assignees,
+                default=[]  
+    )   
+        with main_col:
+            # Apply filters
+            df_filtered = df.copy()
+            if not df_filtered.empty:
+                if filter_project:
+                    df_filtered = df_filtered[df_filtered['project_name'].isin(filter_project)]
+                if filter_status:
+                    df_filtered = df_filtered[df_filtered['status'].isin(filter_status)]
+                if filter_priority and 'priority' in df_filtered.columns:
+                    df_filtered = df_filtered[df_filtered['priority'].isin(filter_priority)]
+                if filter_assignee:
+                    df_filtered = df_filtered[df_filtered['assigned_to'].isin(filter_assignee)]
             
-            # Row 1: Bar Chart and Project Distribution
-            col1, col2 = st.columns(2)
+            # Calculate summary statistics with filtered data
+            total_tasks = len(df_filtered) if not df_filtered.empty else 0
+            completed_tasks = len(df_filtered[df_filtered['status'] == 'Completed']) if not df_filtered.empty else 0
+            incomplete_tasks = len(df_filtered[df_filtered['status'] != 'Completed']) if not df_filtered.empty else 0
+            
+            # Calculate overdue tasks (tasks with due_date in the past and status != 'Completed')
+            current_date = pd.Timestamp.now().date()
+            overdue_tasks = 0
+            if not df_filtered.empty and 'due_date' in df_filtered.columns:
+                df_copy = df_filtered.copy()
+                df_copy['due_date'] = pd.to_datetime(df_copy['due_date'], errors='coerce')
+                overdue_mask = (
+                    (df_copy['due_date'].dt.date < current_date) & 
+                    (df_copy['status'] != 'Completed') &
+                    (df_copy['due_date'].notna())
+                )
+                overdue_tasks = len(df_copy[overdue_mask])
+            
+            # Display statistics in 4 columns
+            st.markdown("---")
+            col1, col2, col3, col4 = st.columns(4)
             
             with col1:
-                st.subheader("📊 Total Tasks by Status")
-                # Bar chart for tasks by status
-                status_counts = df_filtered['status'].value_counts().reset_index()
-                status_counts.columns = ['Status', 'Task Count']
-                
-                fig_bar = px.bar(
-                    status_counts, 
-                    x='Status', 
-                    y='Task Count',
-                    title="Task Distribution by Status",
-                    color='Status',
-                    text='Task Count',
-                    color_discrete_sequence=px.colors.qualitative.Set3
-                )
-                fig_bar.update_traces(texttemplate='%{text}', textposition='outside')
-                fig_bar.update_layout(showlegend=False, height=400)
-                st.plotly_chart(fig_bar, use_container_width=True)
+                with st.container(border=True):    
+                        st.metric(
+                            label="Total completed tasks",
+                            value=str(completed_tasks)
+                        )
             
             with col2:
-                st.subheader("📁 Total Tasks by Project")
-                # Bar chart for tasks by project
-                project_counts = df_filtered['project_name'].value_counts().reset_index()
-                project_counts.columns = ['Project', 'Task Count']
+                with st.container(border=True):
+                    st.metric(
+                        label="Total incomplete tasks", 
+                        value=str(incomplete_tasks)
+                    )
                 
-                fig_project = px.bar(
-                    project_counts, 
-                    x='Project', 
-                    y='Task Count',
-                    title="Task Distribution by Project",
-                    color='Project',
-                    text='Task Count',
-                    color_discrete_sequence=px.colors.qualitative.Pastel
-                )
-                fig_project.update_traces(texttemplate='%{text}', textposition='outside')
-                fig_project.update_layout(
-                    showlegend=False, 
-                    height=400,
-                    xaxis_tickangle=-45
-                )
-                st.plotly_chart(fig_project, use_container_width=True)
-            
-            # Row 2: Timeline and Pie Chart
-            col3, col4 = st.columns(2)
-            
             with col3:
-                st.subheader("📈 Task Completion Over Time")
-                # Prepare data for completion timeline
-                df_timeline = df_filtered.copy()
-                if 'completion_date' in df_timeline.columns:
-                    df_timeline['completion_date'] = pd.to_datetime(df_timeline['completion_date'], errors='coerce')
-                    completed_over_time = df_timeline[df_timeline['status'] == 'Completed'].copy()
-                    
-                    if not completed_over_time.empty:
-                        # Group by completion date
-                        completed_over_time['completion_date'] = completed_over_time['completion_date'].dt.date
-                        timeline_data = completed_over_time.groupby('completion_date').size().reset_index()
-                        timeline_data.columns = ['Date', 'Tasks Completed']
-                        
-                        # Create cumulative sum
-                        timeline_data = timeline_data.sort_values('Date')
-                        timeline_data['Cumulative Tasks'] = timeline_data['Tasks Completed'].cumsum()
-                        
-                        fig_timeline = px.line(
-                            timeline_data, 
-                            x='Date', 
-                            y='Cumulative Tasks',
-                            title="Cumulative Task Completion",
-                            markers=True,
-                            color_discrete_sequence=['#1f77b4']
-                        )
-                        fig_timeline.update_layout(
-                            height=400,
-                            xaxis=dict(
-                                type='date',
-                                tickformat='%Y-%m-%d'
-                            )
-                        )
-                        st.plotly_chart(fig_timeline, use_container_width=True)
-                    else:
-                        st.info("No completed tasks with completion dates found.")
-                else:
-                    st.info("No completion date data available.")
+                with st.container(border=True):
+                    st.metric(
+                        label="Total overdue tasks",
+                        value=str(overdue_tasks)
+                    )
             
             with col4:
-                st.subheader("Task Completion Status This Month")
-                # Pie chart for this month's completion status
-                current_month_start = pd.Timestamp(datetime.now().replace(day=1))
-                current_month_end = pd.Timestamp((datetime.now().replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1))
-
-                # Filter tasks for current month (by due date or completion date)
-                df_month = df_filtered.copy()
-                df_month['due_date'] = pd.to_datetime(df_month['due_date'], errors='coerce')
-                df_month['completion_date'] = pd.to_datetime(df_month['completion_date'], errors='coerce')
-
-                # Tasks due this month or completed this month
-                this_month_tasks = df_month[
-                    ((df_month['due_date'] >= current_month_start) & 
-                     (df_month['due_date'] <= current_month_end)) |
-                    ((df_month['completion_date'] >= current_month_start) & 
-                     (df_month['completion_date'] <= current_month_end))
-                ]
-                
-                if not this_month_tasks.empty:
-                    month_status_counts = this_month_tasks['status'].value_counts().reset_index()
-                    month_status_counts.columns = ['Status', 'Count']
-                    
-                    fig_pie = px.pie(
-                        month_status_counts, 
-                        values='Count', 
-                        names='Status',
-                        title="Task Status Distribution (This Month)",
-                        color_discrete_sequence=px.colors.qualitative.Set2
+                with st.container(border=True):
+                    st.metric(
+                        label="Total tasks",
+                        value=str(total_tasks)
                     )
-                    fig_pie.update_layout(height=400)
-                    st.plotly_chart(fig_pie, use_container_width=True)
-                else:
-                    st.info("No tasks found for this month.")
-        
-        else:
-            st.info("No tasks match the current filters. Please adjust your filter selections.")
-            st.markdown("### 🔍 Current Filters:")
-            st.write(f"- **Projects:** {filter_project if filter_project else 'All'}")
-            st.write(f"- **Status:** {filter_status if filter_status else 'All'}")
-            st.write(f"- **Priority:** {filter_priority if filter_priority else 'All'}")
-            st.write(f"- **Assignees:** {filter_assignee if filter_assignee else 'All'}")
+                
+            # Add some spacing
+            st.markdown("---")
+            
+            if not df_filtered.empty:
+                # Create charts in two rows
+                
+                # Row 1: Bar Chart and Project Distribution
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    with st.container(border=True):
+                        st.markdown(
+                "<h5 style='font-size:25px; color:#333;'>📊 Total Tasks by Status</h5>",
+                unsafe_allow_html=True
+                        )
+                        # Bar chart for tasks by status
+                        status_counts = df_filtered['status'].value_counts().reset_index()
+                        status_counts.columns = ['Status', 'Task Count']
+                        
+                        fig_bar = px.bar(
+                            status_counts, 
+                            x='Status', 
+                            y='Task Count',
+                            color='Status',
+                            text='Task Count',
+                            color_discrete_sequence=px.colors.qualitative.Set3
+                        )
+                        fig_bar.update_traces(texttemplate='%{text}', textposition='outside')
+                        fig_bar.update_layout(showlegend=False, height=400)
+                        st.plotly_chart(fig_bar, use_container_width=True)
+                    
+                with col2:
+                    with st.container(border=True):
+                        st.markdown(
+                "<h5 style='font-size:25px; color:#333;'>📁 Total Tasks by Project</h5>",
+                unsafe_allow_html=True
+                        )
+                        # Bar chart for tasks by project
+                        project_counts = df_filtered['project_name'].value_counts().reset_index()
+                        project_counts.columns = ['Project', 'Task Count']
+                        
+                        fig_project = px.bar(
+                            project_counts, 
+                            x='Project', 
+                            y='Task Count',
+                            color='Project',
+                            text='Task Count',
+                            color_discrete_sequence=px.colors.qualitative.Pastel
+                        )
+                        fig_project.update_traces(texttemplate='%{text}', textposition='outside')
+                        fig_project.update_layout(
+                            showlegend=False, 
+                            height=400,
+                            xaxis_tickangle=-45
+                        )
+                        st.plotly_chart(fig_project, use_container_width=True)
+                    
+                # Row 2: Timeline and Pie Chart
+                col3, col4 = st.columns(2)
+                
+                with col3:
+                    with st.container(border=True):
+                        st.markdown(
+                "<h5 style='font-size:25px; color:#333;'>📈 Task Completion Over Time</h5>",
+                unsafe_allow_html=True
+                        )
+                        # Prepare data for completion timeline
+                        df_timeline = df_filtered.copy()
+                        if 'completion_date' in df_timeline.columns:
+                            df_timeline['completion_date'] = pd.to_datetime(df_timeline['completion_date'], errors='coerce')
+                            completed_over_time = df_timeline[df_timeline['status'] == 'Completed'].copy()
+                            
+                            if not completed_over_time.empty:
+                                # Group by completion date
+                                completed_over_time['completion_date'] = completed_over_time['completion_date'].dt.date
+                                timeline_data = completed_over_time.groupby('completion_date').size().reset_index()
+                                timeline_data.columns = ['Date', 'Tasks Completed']
+                                
+                                # Create cumulative sum
+                                timeline_data = timeline_data.sort_values('Date')
+                                timeline_data['Cumulative Tasks'] = timeline_data['Tasks Completed'].cumsum()
+                                
+                                fig_timeline = px.line(
+                                    timeline_data, 
+                                    x='Date', 
+                                    y='Cumulative Tasks',
+                                    markers=True,
+                                    color_discrete_sequence=['#1f77b4']
+                                )
+                                fig_timeline.update_layout(
+                                    height=400,
+                                    xaxis=dict(
+                                        type='date',
+                                        tickformat='%Y-%m-%d'
+                                    )
+                                )
+                                st.plotly_chart(fig_timeline, use_container_width=True)
+                            else:
+                                st.info("No completed tasks with completion dates found.")
+                        else:
+                            st.info("No completion date data available.")
+                    
+                with col4:
+                    with st.container(border=True):
+                        st.markdown(
+                "<h5 style='font-size:25px; color:#333;'>📝 Task Completion Status This Month</h5>",
+                unsafe_allow_html=True
+                        )
+                       
+                        # Pie chart for this month's completion status
+                        current_month_start = pd.Timestamp(datetime.now().replace(day=1))
+                        current_month_end = pd.Timestamp((datetime.now().replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1))
+
+                        # Filter tasks for current month (by due date or completion date)
+                        df_month = df_filtered.copy()
+                        df_month['due_date'] = pd.to_datetime(df_month['due_date'], errors='coerce')
+                        df_month['completion_date'] = pd.to_datetime(df_month['completion_date'], errors='coerce')
+
+                        # Tasks due this month or completed this month
+                        this_month_tasks = df_month[
+                            ((df_month['due_date'] >= current_month_start) & 
+                            (df_month['due_date'] <= current_month_end)) |
+                            ((df_month['completion_date'] >= current_month_start) & 
+                            (df_month['completion_date'] <= current_month_end))
+                        ]
+                        
+                        if not this_month_tasks.empty:
+                            month_status_counts = this_month_tasks['status'].value_counts().reset_index()
+                            month_status_counts.columns = ['Status', 'Count']
+                            
+                            fig_pie = px.pie(
+                                month_status_counts, 
+                                values='Count', 
+                                names='Status',
+                                color_discrete_sequence=px.colors.qualitative.Set2
+                            )
+                            fig_pie.update_layout(height=400)
+                            st.plotly_chart(fig_pie, use_container_width=True)
+                        else:
+                            st.info("No tasks found for this month.")
+                
+            else:
+                st.info("No tasks match the current filters. Please adjust your filter selections.")
+                st.markdown("### 🔍 Current Filters:")
+                st.write(f"- **Projects:** {filter_project if filter_project else 'All'}")
+                st.write(f"- **Status:** {filter_status if filter_status else 'All'}")
+                st.write(f"- **Priority:** {filter_priority if filter_priority else 'All'}")
+                st.write(f"- **Assignees:** {filter_assignee if filter_assignee else 'All'}")
 
     with tab_all:
         st.subheader("📋 All Tasks")
+        if st.button("Clear All Filters", key="clear_all_filters_btn"):
+            st.session_state.all_tasks_project_filter = []
+            st.session_state.all_tasks_status_filter = []
+            st.session_state.all_tasks_priority_filter = []
+            st.session_state.all_tasks_assignee_filter = []
+            st.rerun()
+
+        # --- Logic to clear filters on page load ---
+        if st.session_state.get("clear_task_filters", False):
+            st.session_state.all_tasks_project_filter = []
+            st.session_state.all_tasks_status_filter = []
+            st.session_state.all_tasks_priority_filter = []
+            st.session_state.all_tasks_assignee_filter = []
+            st.session_state.clear_task_filters = False
         # Show filters horizontally at the top, matching Dashboard style
+        all_projects = []
+        try:
+            all_projects = load_projects()
+        except Exception:
+            all_projects = []
+        if not df.empty and 'project_name' in df.columns:
+            all_projects = list(set(all_projects) | set(df['project_name'].dropna().unique().tolist()))
+        all_projects = sorted(all_projects)
+
         filter_col1, filter_col2 = st.columns(2)
         filter_col3, filter_col4 = st.columns(2)
         with filter_col1:
             selected_project = st.multiselect(
                 "Filter by Project",
-                options=sorted(df['project_name'].dropna().unique().tolist()),
-                default=sorted(df['project_name'].dropna().unique().tolist()),
+                options=all_projects,
                 key="all_tasks_project_filter"
             )
         with filter_col2:
             selected_status = st.multiselect(
                 "Filter by Status",
                 options=sorted(df['status'].dropna().unique().tolist()),
-                default=sorted(df['status'].dropna().unique().tolist()),
                 key="all_tasks_status_filter"
             )
         with filter_col3:
             selected_priority = st.multiselect(
                 "Filter by Priority",
                 options=sorted(df['priority'].dropna().unique().tolist()) if 'priority' in df.columns else [],
-                default=sorted(df['priority'].dropna().unique().tolist()) if 'priority' in df.columns else [],
                 key="all_tasks_priority_filter"
             )
         with filter_col4:
+            unique_assignees_all = []
+            if not df.empty:
+                unique_assignees_all = sorted({a for lst in df['assigned_to_list'] for a in lst})
             selected_assignee = st.multiselect(
                 "Filter by Assignee",
-                options=sorted(df['assigned_to'].dropna().unique().tolist()),
-                default=sorted(df['assigned_to'].dropna().unique().tolist()),
+                options=unique_assignees_all,
                 key="all_tasks_assignee_filter"
             )
+        st.markdown("---")
 
         # Apply filters to All Tasks table
         filtered_df = df.copy()
@@ -596,7 +662,7 @@ def handle_tasks(user_email):
         if selected_priority and 'priority' in filtered_df.columns:
             filtered_df = filtered_df[filtered_df['priority'].isin(selected_priority)]
         if selected_assignee:
-            filtered_df = filtered_df[filtered_df['assigned_to'].isin(selected_assignee)]
+            filtered_df = filtered_df[filtered_df['assigned_to_list'].apply(lambda lst: any(a in lst for a in selected_assignee))]
 
         # Show filtered table data
         if filtered_df.empty:
@@ -627,130 +693,97 @@ def handle_tasks(user_email):
                 if col in display_df.columns:
                     display_df[col] = display_df[col].apply(lambda x: x.strftime("%Y-%m-%d") if pd.notna(x) and x != "" else "")
             st.dataframe(display_df, use_container_width=True)
+            # (Edit option intentionally omitted for All Tasks — editing is available from Today's and My Tasks only)
+            with tab_my:
+                st.subheader("👤 My Tasks")
+                st.write("Logged in as:", user_email)
+                my_tasks = df[df['assigned_to'] == user_email]
 
-        # Confirmation dialog for authorized user
-        if st.session_state.get("show_create_task_warning"):
-            if user_email == "digital@childhelpfoundationindia.org":
-                st.warning("Are you sure you want to create a new task?")
-                confirm_col, cancel_col = st.columns(2)
-                with confirm_col:
-                    if st.button("✅ Yes, proceed", key="confirm_create_task"):
+                # Show Create New Task button below filters for authorized users
+                authorized_users = load_users()
+                if user_email in authorized_users:
+                    if st.button("+ Create New Task", key="create_new_task_btn"):
                         st.session_state.task_page = "NewTask"
-                        st.session_state.show_create_task_warning = False
                         st.rerun()
-                with cancel_col:
-                    if st.button("❌ Cancel", key="cancel_create_task_all"):
-                        st.session_state.show_create_task_warning = False
-                        st.rerun()
-            else:
-                st.warning("Only authorized users can create tasks. Please reach out to the project lead.")
-                if st.button("❌ Close", key="close_unauthorized_task_all"):
-                    st.session_state.show_create_task_warning = False
-                    st.rerun()
+                else:
+                    st.button("+ Create New Task", key="unauthorized_create_task_btn", disabled=True)
 
-    with tab_my:
-        st.subheader("👤 My Tasks")
-        st.write("Logged in as:", user_email)
-        my_tasks = df[df['assigned_to'] == user_email]
+                if my_tasks.empty:
+                    st.info("You have no assigned tasks.")
+                else:
+                    st.markdown("### Your Assigned Tasks")
+                    for idx, row in my_tasks.iterrows():
+                        # Display each task in a single-row table
+                        task_display = pd.DataFrame([{
+                            "Task Name": row.get("task_name", ""),
+                            "Description": row.get("description", ""),
+                            "Project": row.get("project_name", ""),
+                            "Assign Date": row.get("start_date", ""),
+                            "Due Date": row.get("due_date", ""),
+                            "Priority": row.get("priority", ""),
+                            "Status": row.get("status", ""),
+                            "Completion Date": row.get("completion_date", "")
+                        }])
+                        # Format all date columns to string YYYY-MM-DD
+                        for col in ["Assign Date", "Due Date", "Completion Date"]:
+                            if col in task_display.columns:
+                                task_display[col] = task_display[col].apply(lambda x: x.strftime("%Y-%m-%d") if pd.notna(x) and x != "" else "")
+                        # Render the task row only (no per-row Edit column)
+                        st.dataframe(task_display, use_container_width=True, hide_index=True)
 
-        # Add Create New Task button for all users in My Tasks tab
-        if st.button("+ Create New Task", key="create_new_task_btn_my_tasks"):
-            st.session_state.task_page = "NewTask"
-            st.rerun()
-        if my_tasks.empty:
-            st.info("You have no assigned tasks.")
-        else:
-            st.markdown("### Your Assigned Tasks")
-            for idx, row in my_tasks.iterrows():
-                # Display each task in a single-row table
-                task_display = pd.DataFrame([{
-                    "Task Name": row.get("task_name", ""),
-                    "Description": row.get("description", ""),
-                    "Project": row.get("project_name", ""),
-                    "Assign Date": row.get("start_date", ""),
-                    "Due Date": row.get("due_date", ""),
-                    "Priority": row.get("priority", ""),
-                    "Status": row.get("status", ""),
-                    "Completion Date": row.get("completion_date", "")
-                }])
-                # Format all date columns to string YYYY-MM-DD
-                for col in ["Assign Date", "Due Date", "Completion Date"]:
-                    if col in task_display.columns:
-                        task_display[col] = task_display[col].apply(lambda x: x.strftime("%Y-%m-%d") if pd.notna(x) and x != "" else "")
-                cols = st.columns([10, 1])
-                with cols[0]:
-                    st.dataframe(task_display, use_container_width=True, hide_index=True)
-                with cols[1]:
-                    if st.button("Edit", key=f"edit_my_task_{idx}"):
-                        st.session_state.edit_task_idx = idx
-                        st.session_state.show_edit_dialog = True
-                        st.session_state.active_tab = "my"
-
-    with st.sidebar:
-        st.subheader("🗂 Tasks")
-        
-        # Show user info in sidebar
-        user_name = get_user_name(user_email)
-        st.markdown(f"**👤 {user_name}**")
-        st.caption(f"📧 {user_email}")
-        st.markdown("---")
-        
-        # Only show tasks assigned to the logged-in user in sidebar
-        for task_name in df[df['assigned_to'] == user_email]['task_name'].unique():
-            if st.button(task_name, key=f"task_sidebar_{task_name}"):
-                st.session_state.selected_task = task_name
-                st.session_state.task_page = "TaskDetail"
-                st.rerun()
-
-    # Shared Edit dialog logic for both Today's Tasks and My Tasks
-    if st.session_state.get("show_edit_dialog") and st.session_state.get("edit_task_idx") is not None:
-        # Determine which dataset to use based on active tab
-        active_tab = st.session_state.get("active_tab", "my")
-        if active_tab == "today":
-            # Get today's tasks for the user
-            today = date.today()
-            today_tasks = df[
-                (df['assigned_to'] == user_email) & 
-                (pd.to_datetime(df['start_date'], errors='coerce').dt.date == today)
-            ].copy()
-            edit_tasks_df = today_tasks
-        else:
-            # Default to my tasks
-            edit_tasks_df = df[df['assigned_to'] == user_email]
             
-        if not edit_tasks_df.empty:
+            # Selection control to edit a specific task
+            selection_options = [f"{idx} | {row['task_name']}" for idx, row in my_tasks.iterrows()]
+            selected = st.selectbox("Select a task to edit", options=["" ] + selection_options, key="my_tasks_select")
+            if selected and st.button("Edit Selected Task", key="edit_selected_my"):
+                try:
+                    sel_idx = int(selected.split("|")[0].strip())
+                    st.session_state.edit_task_idx = sel_idx
+                    st.session_state.show_edit_dialog = True
+                    st.session_state.active_tab = "my"
+                    st.rerun()
+                except Exception:
+                    st.error("Failed to select task for editing. Please try again.")
+
+        # Render edit dialog in My Tasks tab when requested
+        if st.session_state.get("show_edit_dialog") and st.session_state.get("edit_task_idx") is not None and st.session_state.get("active_tab") == "my":
             edit_idx = st.session_state.edit_task_idx
-            # Find the task in the edit_tasks_df by index
-            if edit_idx in edit_tasks_df.index:
-                edit_row = edit_tasks_df.loc[edit_idx]
+            my_tasks_current = df[df['assigned_to_list'].apply(lambda lst: user_email in lst)].copy()
+            if edit_idx in my_tasks_current.index:
+                edit_row = my_tasks_current.loc[edit_idx]
                 st.markdown("---")
                 st.markdown("#### Edit Task")
-                with st.form(key=f"edit_task_form_{edit_idx}", clear_on_submit=False):
-                    new_task_name = st.text_input("Task Name", value=edit_row.get("task_name", ""))
-                    new_description = st.text_area("Description", value=edit_row.get("description", ""))
-                    new_due_date = st.date_input("Due Date", value=pd.to_datetime(edit_row.get("due_date", date.today())).date() if pd.notna(edit_row.get("due_date")) else date.today())
-                    new_due_date = pd.to_datetime(new_due_date).date()
-                    new_priority = st.selectbox("Priority", ["Low", "Medium", "High"], index=["Low", "Medium", "High"].index(edit_row.get("priority", "Medium")))
-                    new_status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"], index=["Not Started", "In Progress", "Completed"].index(edit_row.get("status", "Not Started")))
-                    new_project = st.selectbox("Project", load_projects(), index=load_projects().index(edit_row.get("project_name", "")) if edit_row.get("project_name", "") in load_projects() else 0)
+                with st.form(key=f"edit_task_form_my_{edit_idx}", clear_on_submit=False):
+                    new_task_name = st.text_input("Task Name", value=edit_row.get("task_name", ""), key=f"task_name_my_{edit_idx}")
+                    new_description = st.text_area("Description", value=edit_row.get("description", ""), key=f"desc_my_{edit_idx}")
                     # Note: assigned_to and created_by are kept as original, not editable
-                    new_start_date = st.date_input("Start Date", value=pd.to_datetime(edit_row.get("start_date", date.today())).date() if pd.notna(edit_row.get("start_date")) else date.today())
+                    new_start_date = st.date_input("Start Date", value=pd.to_datetime(edit_row.get("start_date", date.today())).date() if pd.notna(edit_row.get("start_date")) else date.today(), key=f"start_my_{edit_idx}")
                     new_start_date = pd.to_datetime(new_start_date).date()
-                    
+                    new_due_date = st.date_input("Due Date", value=pd.to_datetime(edit_row.get("due_date", new_start_date)).date() if pd.notna(edit_row.get("due_date")) else new_start_date, min_value=new_start_date, key=f"due_my_{edit_idx}")
+                    new_due_date = pd.to_datetime(new_due_date).date()
+                    new_priority = st.selectbox("Priority", ["Low", "Medium", "High"], index=["Low", "Medium", "High"].index(edit_row.get("priority", "Medium")), key=f"priority_my_{edit_idx}")
+                    new_status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"], index=["Not Started", "In Progress", "Completed"].index(edit_row.get("status", "Not Started")), key=f"status_my_{edit_idx}")
+                    new_project = st.selectbox("Project", load_projects(), index=load_projects().index(edit_row.get("project_name", "")) if edit_row.get("project_name", "") in load_projects() else 0, key=f"project_my_{edit_idx}")
                     # Completion Date - only show if status is Completed
                     show_completion = new_status == "Completed"
                     if show_completion:
-                        new_completion_date = st.date_input("Completion Date", value=pd.to_datetime(edit_row.get("completion_date", date.today())).date() if pd.notna(edit_row.get("completion_date")) else date.today())
+                        # Set default completion date to today or existing, but not before start date
+                        default_completion_date = pd.to_datetime(edit_row.get("completion_date", date.today())).date() if pd.notna(edit_row.get("completion_date")) else date.today()
+                        if default_completion_date < new_start_date:
+                            default_completion_date = new_start_date
+                        new_completion_date = st.date_input("Completion Date", value=default_completion_date, min_value=new_start_date, key=f"comp_my_{edit_idx}")
                         new_completion_date = pd.to_datetime(new_completion_date).date()
                     else:
                         new_completion_date = None
-                    
-                    new_comments = st.text_area("Comments", value=edit_row.get("comments", ""))
-                    
-                    submitted = st.form_submit_button("Save Changes")
-                    cancel = st.form_submit_button("Cancel")
+                    new_comments = st.text_area("Comments", value=edit_row.get("comments", ""), key=f"comments_my_{edit_idx}")
+
+                    col_a, col_b = st.columns([1,1])
+                    with col_a:
+                        submitted = st.form_submit_button("Save Task", key=f"save_my_{edit_idx}")
+                    with col_b:
+                        back = st.form_submit_button("Back to Task Board", key=f"back_my_{edit_idx}")
+
                     if submitted:
-                        # Create updated task object
                         updated_task = {
                             "task_name": new_task_name,
                             "description": new_description,
@@ -761,25 +794,53 @@ def handle_tasks(user_email):
                             "due_date": new_due_date,
                             "completion_date": new_completion_date if show_completion else None,
                             "comments": new_comments,
-                            "assigned_to": edit_row.get("assigned_to"),  # Keep original assignee
-                            "created_by": edit_row.get("created_by")     # Keep original creator
+                            "assigned_to": edit_row.get("assigned_to"),
+                            "created_by": edit_row.get("created_by")
                         }
-                        
-                        # Use efficient update function
                         if update_task_in_sheets(edit_row.get("task_name"), updated_task):
                             st.success(f"Task '{new_task_name}' updated successfully!")
                             st.session_state.show_edit_dialog = False
                             st.session_state.edit_task_idx = None
                             st.session_state.active_tab = None
+                            st.session_state.task_page = "Tasks"
                             st.rerun()
                         else:
                             st.error("Failed to update task. Please try again.")
-                    if cancel:
+                    if back:
                         st.session_state.show_edit_dialog = False
                         st.session_state.edit_task_idx = None
                         st.session_state.active_tab = None
+                        st.session_state.task_page = "Tasks"
                         st.rerun()
-            else:
-                st.error("Task not found for editing.")
-                st.session_state.show_edit_dialog = False
-                st.session_state.edit_task_idx = None
+
+    # (All Tasks edit option removed — edits are available from Today's and My tabs only)
+
+    with st.sidebar:
+        st.subheader("🗂 Tasks")
+
+        # Show user info in sidebar
+        user_name = get_user_name(user_email)
+        st.markdown(f"**👤 {user_name}**")
+        st.caption(f"📧 {user_email}")
+        st.markdown("---")
+
+        # Replace per-task buttons with a compact selectbox for tasks assigned to the user
+        user_tasks = df[df['assigned_to_list'].apply(lambda lst: user_email in lst)][['task_name']].drop_duplicates()
+        task_options = [""] + [f"{idx} | {row['task_name']}" for idx, row in user_tasks.reset_index().iterrows()]
+        selected_sidebar = st.selectbox("Open a task", options=task_options, key="sidebar_task_select")
+        if selected_sidebar:
+            try:
+                # index in the original df is embedded; parse the task name
+                sel_task_name = selected_sidebar.split("|")[1].strip()
+                st.session_state.selected_task = sel_task_name
+                st.session_state.task_page = "TaskDetail"
+                if st.button("Open Task", key="open_task_sidebar"):
+                    st.rerun()
+            except Exception:
+                # Fallback behavior: set task and rerun
+                st.session_state.selected_task = selected_sidebar
+                st.session_state.task_page = "TaskDetail"
+                if st.button("Open Task", key="open_task_sidebar_fallback"):
+                    st.rerun()
+
+    # (Shared edit dialog removed — edit forms render inline within each tab)
