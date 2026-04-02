@@ -9,6 +9,40 @@ from datetime import datetime, timedelta
 import random
 from gspread.exceptions import APIError
 
+
+# Utility: robustly normalize string values in a dataframe-like object
+def sanitize_df_strings(df):
+    """Ensure we have a pandas DataFrame and strip string values safely.
+
+    This handles cases where the incoming object might be a Spark DataFrame
+    or another dataframe-like object in deployed environments.
+    """
+    try:
+        # Convert non-pandas DataFrame-like objects to pandas if possible
+        if not isinstance(df, pd.DataFrame):
+            if hasattr(df, "toPandas"):
+                df = df.toPandas()
+            elif hasattr(df, "to_pandas"):
+                df = df.to_pandas()
+            else:
+                df = pd.DataFrame(df)
+
+        # Define safe stripper
+        def _strip_if_str(x):
+            return x.strip() if isinstance(x, str) else x
+
+        # Apply per-column using Series.apply which is widely supported
+        for col in df.columns:
+            try:
+                df[col] = df[col].apply(_strip_if_str)
+            except Exception:
+                # If a column can't be processed, leave it as-is
+                continue
+
+        return df
+    except Exception:
+        return df
+
 # === Rate Limiting and Caching ===
 # Cache configuration
 CACHE_DURATION_SECONDS = 60  # Cache data for 60 seconds
@@ -366,7 +400,7 @@ def load_users_from_sheets():
             df = pd.DataFrame(data)
             # Clean column names and data (handle trailing spaces)
             df.columns = df.columns.str.strip()
-            df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+            df = sanitize_df_strings(df)
             
             users_list = df["email"].dropna().unique().tolist()
         
@@ -405,7 +439,7 @@ def get_user_name_from_sheets(user_email):
             df = pd.DataFrame(data)
             # Clean column names and data (handle trailing spaces)
             df.columns = df.columns.str.strip()
-            df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+            df = sanitize_df_strings(df)
             
             user_match = df[df["email"].str.lower() == user_email.strip().lower()]
             
@@ -693,7 +727,7 @@ def check_user_credentials(email):
         df = pd.DataFrame(data)
         # Clean column names and data
         df.columns = df.columns.str.strip()
-        df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+        df = sanitize_df_strings(df)
         
         match = df[df["email"].str.lower() == email.strip().lower()]
         return not match.empty

@@ -171,7 +171,7 @@ def login_form():
         with st.container(border=True, horizontal_alignment='center', vertical_alignment='center'):
             st.markdown('<div class="login-title">Log-in</div>', unsafe_allow_html=True)
             st.markdown('<div class="input-label">✉️ Email</div>', unsafe_allow_html=True)
-            email = st.text_input("", key="email", placeholder="Enter your email")
+            email = st.text_input("Email", key="email", placeholder="Enter your email", label_visibility="collapsed")
             st.markdown('<div class="input-label">🔑 Password</div>', unsafe_allow_html=True)
             password = st.text_input("", type="password", key="password", placeholder="Enter your password")
             st.markdown("<br>", unsafe_allow_html=True)
